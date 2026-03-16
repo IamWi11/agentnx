@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["@anthropic-ai/sdk", "resend"],
+  serverExternalPackages: ["groq-sdk", "resend"],
 };
 
 export default nextConfig;

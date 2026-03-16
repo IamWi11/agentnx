@@ -4,9 +4,9 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-  const Anthropic = (await import("@anthropic-ai/sdk")).default;
+  const Groq = (await import("groq-sdk")).default;
   const { Resend } = await import("resend");
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? "" });
+  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY ?? "" });
   const resend = new Resend(process.env.RESEND_API_KEY ?? "");
   const data = await req.json();
 
@@ -39,13 +39,13 @@ Generate a complete GMP Deviation Report including:
 
 Be specific, professional, and GMP-compliant.`;
 
-  const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
+  const completion = await groq.chat.completions.create({
+    model: "meta-llama/llama-4-scout-17b-16e-instruct",
     max_tokens: 4096,
     messages: [{ role: "user", content: prompt }],
   });
 
-  const reportText = message.content[0].type === "text" ? message.content[0].text : "";
+  const reportText = completion.choices[0]?.message?.content ?? "";
 
   // 2. Email the report to QA manager for approval
   const qaEmail = data.qaManagerEmail || process.env.DEFAULT_QA_EMAIL;
