@@ -19,7 +19,9 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       // Scripts: self + Vercel analytics/speed insights
-      "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://cdn.vercel-insights.com https://challenges.cloudflare.com",
+      // 'strict-dynamic' makes modern browsers ignore 'unsafe-inline' while keeping
+      // backward compat for older browsers that don't understand strict-dynamic.
+      "script-src 'self' 'unsafe-inline' 'strict-dynamic' https://va.vercel-scripts.com https://cdn.vercel-insights.com https://challenges.cloudflare.com",
       // Styles: unsafe-inline required for framer-motion and Tailwind
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       // Images: self, data URIs, and any HTTPS source
@@ -42,6 +44,16 @@ const securityHeaders = [
   },
 ];
 
+// Restrict CORS on API routes — overrides Vercel's platform-level wildcard default.
+// Only requests from our own domain get the Access-Control-Allow-Origin grant.
+// Server-to-server calls (no Origin header) pass through unaffected.
+const corsHeaders = [
+  { key: "Access-Control-Allow-Origin", value: "https://www.agentnx.ai" },
+  { key: "Access-Control-Allow-Methods", value: "GET, POST, OPTIONS" },
+  { key: "Access-Control-Allow-Headers", value: "Content-Type" },
+  { key: "Access-Control-Max-Age", value: "86400" },
+];
+
 const nextConfig: NextConfig = {
   serverExternalPackages: ["groq-sdk", "resend"],
   async headers() {
@@ -49,6 +61,11 @@ const nextConfig: NextConfig = {
       {
         source: "/(.*)",
         headers: securityHeaders,
+      },
+      {
+        // Apply restrictive CORS explicitly to all API routes
+        source: "/api/(.*)",
+        headers: corsHeaders,
       },
     ];
   },

@@ -189,11 +189,16 @@ export default function DeviationReport() {
 
           <button
             type="submit"
-            disabled={loading || !turnstileToken}
+            disabled={loading}
             className="w-full bg-blue-500 hover:bg-blue-400 disabled:bg-blue-500/50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl text-base transition"
           >
             {loading ? "Agent Working — Generating & Routing Report..." : "Submit to AgentNX Workflow →"}
           </button>
+          <noscript>
+            <p className="text-yellow-400 text-sm text-center">
+              JavaScript is required to submit this form. Please enable it in your browser.
+            </p>
+          </noscript>
         </form>
 
         <p className="text-center text-gray-600 text-xs mt-6">
