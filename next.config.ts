@@ -19,9 +19,7 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       // Scripts: self + Vercel analytics/speed insights
-      // 'strict-dynamic' makes modern browsers ignore 'unsafe-inline' while keeping
-      // backward compat for older browsers that don't understand strict-dynamic.
-      "script-src 'self' 'unsafe-inline' 'strict-dynamic' https://va.vercel-scripts.com https://cdn.vercel-insights.com https://challenges.cloudflare.com",
+      "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://cdn.vercel-insights.com https://challenges.cloudflare.com",
       // Styles: unsafe-inline required for framer-motion and Tailwind
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       // Images: self, data URIs, and any HTTPS source
