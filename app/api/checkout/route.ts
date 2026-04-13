@@ -21,32 +21,40 @@ const PLANS: Record<string, { priceId: string; name: string }> = {
 };
 
 export async function GET(req: NextRequest) {
-  const plan = req.nextUrl.searchParams.get("plan")?.toLowerCase();
+  try {
+    const plan = req.nextUrl.searchParams.get("plan")?.toLowerCase();
 
-  if (!plan || !PLANS[plan]) {
-    return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
-  }
+    if (!plan || !PLANS[plan]) {
+      return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
+    }
 
-  const { priceId, name } = PLANS[plan];
+    const { priceId, name } = PLANS[plan];
 
-  if (!priceId) {
+    if (!priceId || priceId.startsWith("price_YOUR")) {
+      return NextResponse.json(
+        { error: `Stripe price ID for ${name} not configured` },
+        { status: 500 }
+      );
+    }
+
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://agentnx.ai";
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/pricing`,
+      billing_address_collection: "required",
+      allow_promotion_codes: true,
+      metadata: { plan },
+    });
+
+    return NextResponse.redirect(session.url!, 303);
+  } catch (err) {
+    console.error("Checkout error:", err);
     return NextResponse.json(
-      { error: `Stripe price ID for ${name} not configured` },
+      { error: "Checkout failed", detail: String(err) },
       { status: 500 }
     );
   }
-
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://agentnx.ai";
-
-  const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${baseUrl}/pricing`,
-    billing_address_collection: "required",
-    allow_promotion_codes: true,
-    metadata: { plan },
-  });
-
-  return NextResponse.redirect(session.url!);
 }
