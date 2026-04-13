@@ -17,14 +17,14 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://agentnx.ai"),
-  title: "AgentNX.ai — AI Voice Agents for Business",
-  description: "Deploy custom AI voice agents that handle inbound and outbound calls 24/7. No salaries, no benefits, no sick days. Built for pharma, healthcare, and government contractors.",
+  title: "AgentNX.ai — AI Agents for Enterprise & Government Operations",
+  description: "AgentNX deploys intelligent AI agents that automate documentation, approvals, routing, and compliance workflows — built for pharma, healthcare, cybersecurity, and government contractors.",
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "AgentNX.ai — AI Voice Agents for Business",
-    description: "Deploy custom AI voice agents that handle calls 24/7. No salaries, no benefits, no sick days.",
+    title: "AgentNX.ai — AI Agents for Enterprise & Government Operations",
+    description: "Intelligent AI agents that automate compliance workflows, approvals, routing, and documentation — built for pharma, healthcare, cybersecurity, and government.",
     url: "https://agentnx.ai",
     siteName: "AgentNX.ai",
     type: "website",
@@ -32,8 +32,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "AgentNX.ai — AI Voice Agents for Business",
-    description: "Deploy custom AI voice agents that handle calls 24/7. No salaries, no benefits, no sick days.",
+    title: "AgentNX.ai — AI Agents for Enterprise & Government Operations",
+    description: "Intelligent AI agents that automate compliance workflows, approvals, routing, and documentation — built for pharma, healthcare, cybersecurity, and government.",
     site: "@agentnxai",
   },
   robots: {
