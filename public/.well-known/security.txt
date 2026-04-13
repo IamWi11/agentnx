@@ -1,0 +1,5 @@
+Contact: mailto:william.l.munoz@gmail.com
+Expires: 2027-04-13T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://agentnx.ai/.well-known/security.txt
+Policy: https://agentnx.ai/.well-known/security.txt

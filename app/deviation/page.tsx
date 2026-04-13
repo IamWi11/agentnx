@@ -1,10 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
+
+const TurnstileWidget = dynamic(() => import("../components/TurnstileWidget"), { ssr: false });
 
 export default function DeviationReport() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [form, setForm] = useState({
     site: "",
     product: "",
@@ -26,17 +30,22 @@ export default function DeviationReport() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!turnstileToken) {
+      alert("Please complete the security check.");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/submit-deviation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, turnstileToken }),
       });
       if (res.ok) {
         setDone(true);
       } else {
-        alert("Error submitting. Please try again.");
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Error submitting. Please try again.");
       }
     } catch {
       alert("Error submitting. Please try again.");
@@ -169,14 +178,30 @@ export default function DeviationReport() {
             </div>
           </div>
 
-          <button type="submit" disabled={loading}
-            className="w-full bg-blue-500 hover:bg-blue-400 disabled:bg-blue-500/50 text-white font-bold py-4 rounded-xl text-base transition">
+          {/* Turnstile CAPTCHA */}
+          <div className="flex justify-center">
+            <TurnstileWidget
+              onSuccess={(token) => setTurnstileToken(token)}
+              onExpire={() => setTurnstileToken("")}
+              onError={() => setTurnstileToken("")}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading || !turnstileToken}
+            className="w-full bg-blue-500 hover:bg-blue-400 disabled:bg-blue-500/50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl text-base transition"
+          >
             {loading ? "Agent Working — Generating & Routing Report..." : "Submit to AgentNX Workflow →"}
           </button>
         </form>
 
         <p className="text-center text-gray-600 text-xs mt-6">
           AI-generated report — always review before final submission. AgentNX.ai
+        </p>
+        <p className="text-center text-gray-700 text-xs mt-2">
+          Submitted data is used solely to generate and route your deviation report. It is not stored beyond delivery.
+          AgentNX.ai is a product of IMAGE 101 LLC — a Service-Disabled Veteran-Owned Small Business.
         </p>
       </div>
     </main>

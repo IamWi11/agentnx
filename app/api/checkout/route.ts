@@ -2,6 +2,20 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 
+// Simple in-memory rate limiter: 10 checkout attempts per IP per minute
+const _rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = _rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    _rateLimitMap.set(ip, { count: 1, resetAt: now + 60_000 });
+    return false;
+  }
+  if (entry.count >= 10) return true;
+  entry.count++;
+  return false;
+}
+
 const PLANS: Record<string, { priceId: string; name: string }> = {
   starter:    { priceId: process.env.STRIPE_PRICE_STARTER!,    name: "Starter" },
   growth:     { priceId: process.env.STRIPE_PRICE_GROWTH!,     name: "Growth" },
@@ -10,6 +24,11 @@ const PLANS: Record<string, { priceId: string; name: string }> = {
 
 export async function GET(req: NextRequest) {
   try {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+    if (isRateLimited(ip)) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+
     const plan = req.nextUrl.searchParams.get("plan")?.toLowerCase();
 
     if (!plan || !PLANS[plan]) {

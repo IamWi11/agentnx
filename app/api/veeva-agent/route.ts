@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sanitizeForPrompt, checkRateLimit, getClientIp, checkCsrfOrigin } from "../../lib/security";
+import { logger } from "../../lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -76,34 +78,66 @@ const MOCK_VAULT_DOCUMENTS: VaultDocument[] = [
   },
 ];
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  // Rate limit: 60 fetches per IP per hour (page loads only)
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`veeva-get:${ip}`, 60, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+  // Only serve to same-origin browser requests
+  if (!checkCsrfOrigin(req)) {
+    logger.warn("veeva-agent-get", "CSRF origin rejected", { origin: req.headers.get("origin") });
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   return NextResponse.json({ documents: MOCK_VAULT_DOCUMENTS });
 }
 
 export async function POST(req: NextRequest) {
+  // Rate limit: 30 requests per IP per hour
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`veeva-agent:${ip}`, 30, 60 * 60 * 1000)) {
+    return NextResponse.json({ success: false, error: "Too many requests" }, { status: 429 });
+  }
+
   try {
     const Groq = (await import("groq-sdk")).default;
     const groq = new Groq({ apiKey: process.env.GROQ_API_KEY ?? "" });
 
-    const { documentId } = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ success: false, error: "Invalid request body" }, { status: 400 });
+    }
+
+    const { documentId } = body as Record<string, unknown>;
+
+    // Validate documentId against the known list — never pass raw user input into the prompt
+    if (typeof documentId !== "string" || !/^VLT-\d{4}-\d{3}$/.test(documentId)) {
+      return NextResponse.json({ success: false, error: "Invalid document ID" }, { status: 400 });
+    }
 
     const doc = MOCK_VAULT_DOCUMENTS.find((d) => d.id === documentId);
     if (!doc) {
       return NextResponse.json({ success: false, error: "Document not found" }, { status: 404 });
     }
 
+    // All values interpolated into the prompt come from the trusted MOCK array,
+    // not from user input, so sanitizeForPrompt is a belt-and-suspenders measure.
+    const s = (v: string) => sanitizeForPrompt(v, 300);
+
     const prompt = `You are an AI agent monitoring a Veeva Vault document management system for a cell therapy biotech company (immatics).
 
 Analyze this Vault document and determine the appropriate action:
 
-Document ID: ${doc.id}
-Document Name: ${doc.name}
-Type: ${doc.type}
-Current Status: ${doc.status}
+Document ID: ${s(doc.id)}
+Document Name: ${s(doc.name)}
+Type: ${s(doc.type)}
+Current Status: ${s(doc.status)}
 Days in Current Status: ${doc.daysInStatus}
-Owner: ${doc.owner}
-Product: ${doc.product}
-Version: ${doc.version}
+Owner: ${s(doc.owner)}
+Product: ${s(doc.product)}
+Version: ${s(doc.version)}
 
 Based on this analysis, provide:
 1. RISK LEVEL: (Low / Medium / High / Critical)
@@ -142,8 +176,10 @@ Respond in this exact JSON format:
     };
 
     return NextResponse.json({ success: true, document: doc, result: auditEntry });
+    logger.info("veeva-agent", "Document processed", { documentId, action: result.action, risk: result.riskLevel });
+    return NextResponse.json({ success: true, document: doc, result: auditEntry });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    logger.error("veeva-agent", "Agent processing failed", { err: err instanceof Error ? err.message : String(err) });
+    return NextResponse.json({ success: false, error: "Agent processing failed" }, { status: 500 });
   }
 }
