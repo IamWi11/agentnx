@@ -130,7 +130,7 @@ const translations = {
         {
           name: "Enterprise",
           description: "Unlimited agents. White-label ready. Built for compliance-heavy industries.",
-          features: ["Unlimited voice agents", "Up to 10,000 min/month included", "Overage at $0.05/min", "GxP / HIPAA-ready documentation", "White-label option", "Dedicated account manager", "Custom integrations", "SLA guarantee"],
+          features: ["Up to 10,000 min/month included", "Overage at $0.05/min", "GxP / HIPAA-ready documentation", "White-label option", "Dedicated account manager", "Custom integrations", "SLA guarantee"],
           cta: "Get Started",
         },
       ],
@@ -268,7 +268,7 @@ const translations = {
         {
           name: "Enterprise",
           description: "Agentes ilimitados. Listo para marca blanca. Para industrias con alto cumplimiento.",
-          features: ["Agentes de voz ilimitados", "Hasta 10,000 min/mes incluidos", "Excedente a $0.05/min", "Documentación GxP / HIPAA", "Opción de marca blanca", "Gestor de cuenta dedicado", "Integraciones personalizadas", "Garantía de SLA"],
+          features: ["Hasta 10,000 min/mes incluidos", "Excedente a $0.05/min", "Documentación GxP / HIPAA", "Opción de marca blanca", "Gestor de cuenta dedicado", "Integraciones personalizadas", "Garantía de SLA"],
           cta: "Comenzar",
         },
       ],
