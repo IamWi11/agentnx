@@ -130,13 +130,13 @@ const translations = {
         {
           name: "Enterprise",
           description: "Unlimited agents. White-label ready. Built for compliance-heavy industries.",
-          features: ["Unlimited voice agents", "Unlimited calls", "GxP / HIPAA-ready documentation", "White-label option", "Dedicated account manager", "Custom integrations", "SLA guarantee"],
+          features: ["Unlimited voice agents", "Up to 10,000 min/month included", "Overage at $0.05/min", "GxP / HIPAA-ready documentation", "White-label option", "Dedicated account manager", "Custom integrations", "SLA guarantee"],
           cta: "Get Started",
         },
       ],
       faq: [
         { q: "How fast can my agent be live?", a: "Most agents are configured and live within 5 business days of onboarding." },
-        { q: "What if I go over my call limit?", a: "Overage calls are billed at $0.08/minute. You'll get an alert before that happens." },
+        { q: "What if I go over my call limit?", a: "Overage calls are billed at $0.05/minute. You'll get an alert before that happens." },
         { q: "Can I cancel anytime?", a: "Yes. Month-to-month. Cancel through your billing portal with no penalties." },
         { q: "Is this HIPAA or GxP compliant?", a: "Enterprise tier includes compliance documentation. Contact us for regulated industry requirements." },
       ],
@@ -268,13 +268,13 @@ const translations = {
         {
           name: "Enterprise",
           description: "Agentes ilimitados. Listo para marca blanca. Para industrias con alto cumplimiento.",
-          features: ["Agentes de voz ilimitados", "Llamadas ilimitadas", "Documentación GxP / HIPAA", "Opción de marca blanca", "Gestor de cuenta dedicado", "Integraciones personalizadas", "Garantía de SLA"],
+          features: ["Agentes de voz ilimitados", "Hasta 10,000 min/mes incluidos", "Excedente a $0.05/min", "Documentación GxP / HIPAA", "Opción de marca blanca", "Gestor de cuenta dedicado", "Integraciones personalizadas", "Garantía de SLA"],
           cta: "Comenzar",
         },
       ],
       faq: [
         { q: "¿Qué tan rápido puede estar activo mi agente?", a: "La mayoría de los agentes se configuran y están activos en 5 días hábiles tras el onboarding." },
-        { q: "¿Qué pasa si supero mi límite de llamadas?", a: "Las llamadas adicionales se facturan a $0.08/minuto. Recibirás una alerta antes de que ocurra." },
+        { q: "¿Qué pasa si supero mi límite de llamadas?", a: "Las llamadas adicionales se facturan a $0.05/minuto. Recibirás una alerta antes de que ocurra." },
         { q: "¿Puedo cancelar en cualquier momento?", a: "Sí. Mes a mes. Cancela desde tu portal de facturación sin penalizaciones." },
         { q: "¿Es compatible con HIPAA o GxP?", a: "El nivel Enterprise incluye documentación de cumplimiento. Contáctanos para requisitos de industrias reguladas." },
       ],

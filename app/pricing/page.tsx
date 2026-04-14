@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { useLanguage } from "../context/LanguageContext";
 
-const prices = ["$299", "$999", "$2,500"];
+const prices = ["$299", "$999", "$2,499"];
 const periods = ["/mo", "/mo", "/mo"];
 const slugs = ["starter", "growth", "enterprise"];
 const highlights = [false, true, false];
