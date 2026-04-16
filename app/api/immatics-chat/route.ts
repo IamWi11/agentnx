@@ -21,15 +21,18 @@ export async function POST(req: NextRequest) {
   let { messages } = await req.json() as { messages: Array<{ role: string; content: string }> };
 
   // Replace __start__ sentinel with an instruction to open the conversation
-  messages = messages.map(m =>
-    m.content === "__start__" ? { ...m, content: "Start the interview. Greet me briefly and ask your first question." } : m
-  );
+  const cleaned = messages.map(m => ({
+    role: (m.role === "assistant" ? "assistant" : "user") as "user" | "assistant",
+    content: m.content === "__start__"
+      ? "Start the interview. Greet me briefly and ask your first question."
+      : m.content,
+  }));
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 200,
     system: SYSTEM_PROMPT,
-    messages,
+    messages: cleaned,
     stream: true,
   });
 
