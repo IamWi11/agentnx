@@ -181,20 +181,6 @@ export default function ImmaticsDemo() {
       }
       // Detect when Alex signals completion
       if (full.toLowerCase().includes("save to form")) setChatReady(true);
-      // Speak Alex's response aloud
-      if (full && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-        const utt = new SpeechSynthesisUtterance(full);
-        utt.rate = 0.92;
-        utt.pitch = 1;
-        // Prefer a natural-sounding voice if available
-        const voices = window.speechSynthesis.getVoices();
-        const preferred = voices.find(v => /samantha|karen|moira|daniel|ava/i.test(v.name))
-          ?? voices.find(v => v.lang === "en-US" && !v.name.toLowerCase().includes("google"))
-          ?? voices[0];
-        if (preferred) utt.voice = preferred;
-        window.speechSynthesis.speak(utt);
-      }
     } catch {
       const errMsg: ChatMessage = { role: "assistant", content: "Connection error — please try again." };
       chatMessagesRef.current = [...updated, errMsg];
@@ -218,7 +204,6 @@ export default function ImmaticsDemo() {
 
   const closeGuided = () => {
     recognitionRef.current?.stop();
-    window.speechSynthesis?.cancel();
     setChatListening(false);
     setGuidedOpen(false);
   };
