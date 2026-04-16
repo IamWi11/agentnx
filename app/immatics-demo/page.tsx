@@ -63,21 +63,6 @@ const PRODUCTS = [
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
-const ALEX_SYSTEM_PROMPT = `You are Alex, a GMP deviation intake agent for immatics — a clinical-stage cell therapy company. You assist manufacturing operators in reporting deviation events by voice.
-
-Collect these four things through natural, friendly conversation:
-1. What happened (the deviation event itself)
-2. When it was discovered (date and time)
-3. What was observed (measurements, readings, alarm values, visible signs)
-4. Current status of the affected batch or area
-
-Be conversational — not robotic or scripted. Ask natural follow-ups if an answer is vague.
-If the operator asks you questions about criticality, SOPs, escalation, or GMP — answer helpfully.
-You know cell therapy manufacturing, 21 CFR Part 11, CAPA, and Veeva Vault QMS.
-
-When you have everything, say: "Perfect, I have everything I need. Click Save to Form when you're ready."
-Keep responses short — two to three sentences max. This is voice, not a report.`;
-
 const CRITICALITY_COLORS: Record<string, string> = {
   Critical: "bg-red-500/20 border-red-500/40 text-red-400",
   Major:    "bg-orange-500/20 border-orange-500/40 text-orange-400",
@@ -226,16 +211,11 @@ export default function ImmaticsDemo() {
         setVapiStatus("idle");
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (vapi as any).start({
-        model: {
-          provider: "openai",
-          model: "gpt-4o",
-          messages: [{ role: "system", content: ALEX_SYSTEM_PROMPT }],
-        },
-        voice: { provider: "openai", voiceId: "nova" },
-        firstMessage: "Hi, I'm Alex — your deviation intake agent. Tell me, what happened?",
-      });
+      // Get a properly registered assistant ID (avoids inline config issues)
+      const assistantRes = await fetch("/api/immatics-vapi-assistant", { method: "POST" });
+      const { assistantId, error: assistantErr } = await assistantRes.json();
+      if (!assistantId) throw new Error(assistantErr || "No assistant ID returned");
+      await vapi.start(assistantId);
     } catch (err) {
       console.error("Failed to start VAPI:", err);
       const errMsg: ChatMessage = { role: "assistant", content: "⚠ Could not connect. Check your microphone permissions and try again." };
