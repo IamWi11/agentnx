@@ -61,8 +61,22 @@ const PRODUCTS = [
   "IMA401",
 ];
 
-// Chat-based guided interview — no VAPI dependency
 type ChatMessage = { role: "user" | "assistant"; content: string };
+
+const ALEX_SYSTEM_PROMPT = `You are Alex, a GMP deviation intake agent for immatics — a clinical-stage cell therapy company. You assist manufacturing operators in reporting deviation events by voice.
+
+Collect these four things through natural, friendly conversation:
+1. What happened (the deviation event itself)
+2. When it was discovered (date and time)
+3. What was observed (measurements, readings, alarm values, visible signs)
+4. Current status of the affected batch or area
+
+Be conversational — not robotic or scripted. Ask natural follow-ups if an answer is vague.
+If the operator asks you questions about criticality, SOPs, escalation, or GMP — answer helpfully.
+You know cell therapy manufacturing, 21 CFR Part 11, CAPA, and Veeva Vault QMS.
+
+When you have everything, say: "Perfect, I have everything I need. Click Save to Form when you're ready."
+Keep responses short — two to three sentences max. This is voice, not a report.`;
 
 const CRITICALITY_COLORS: Record<string, string> = {
   Critical: "bg-red-500/20 border-red-500/40 text-red-400",
@@ -78,14 +92,14 @@ export default function ImmaticsDemo() {
   const [activeTab, setActiveTab] = useState<"veeva" | "teams" | "email">("veeva");
   const [recordingField, setRecordingField] = useState<"description" | "immediateActions" | null>(null);
   const [guidedOpen, setGuidedOpen] = useState(false);
+  const [vapiStatus, setVapiStatus] = useState<"idle" | "connecting" | "active" | "analyzing">("idle");
+  const [vapiVolume, setVapiVolume] = useState(0);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [chatInput, setChatInput] = useState("");
-  const [chatLoading, setChatLoading] = useState(false);
-  const [chatListening, setChatListening] = useState(false);
-  const [chatReady, setChatReady] = useState(false); // Alex said "Got it"
+  const [chatReady, setChatReady] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const vapiRef = useRef<any>(null);
   const chatMessagesRef = useRef<ChatMessage[]>([]);
   const chatScrollRef = useRef<HTMLDivElement>(null);
-  const guidedOpenRef = useRef(false); // track modal open state without closure issues
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const [form, setForm] = useState({
@@ -148,113 +162,97 @@ export default function ImmaticsDemo() {
     setRecordingField(field);
   };
 
-  // Start listening and auto-send when user stops speaking
-  const startAutoListen = () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR || !guidedOpenRef.current) return;
-    recognitionRef.current?.stop();
-    const rec = new SR();
-    rec.lang = "en-US";
-    rec.continuous = false;
-    rec.interimResults = true;
-    let hasFinal = false;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    rec.onresult = (e: any) => {
-      let interim = "";
-      let final = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) { final += e.results[i][0].transcript; hasFinal = true; }
-        else interim = e.results[i][0].transcript;
-      }
-      // Show interim live in input box
-      if (interim) setChatInput(interim);
-      if (final) {
-        setChatInput("");
-        setChatListening(false);
-        sendChatMessage(final);
-      }
-    };
-    rec.onend = () => {
-      setChatListening(false);
-      if (!hasFinal) setChatInput(""); // clear stale interim if no final captured
-    };
-    rec.onerror = () => { setChatListening(false); setChatInput(""); };
-    recognitionRef.current = rec;
-    rec.start();
-    setChatListening(true);
-    setChatInput("");
-  };
-
-  const sendChatMessage = async (userText: string) => {
-    if (!userText.trim() || chatLoading) return;
-    recognitionRef.current?.stop();
-    setChatListening(false);
-    const userMsg: ChatMessage = { role: "user", content: userText.trim() };
-    const updated = [...chatMessagesRef.current, userMsg];
-    chatMessagesRef.current = updated;
-    setChatMessages([...updated]);
-    setChatInput("");
-    setChatLoading(true);
-
-    // Placeholder bubble for streaming response
-    chatMessagesRef.current = [...updated, { role: "assistant", content: "" }];
-    setChatMessages([...chatMessagesRef.current]);
-
-    try {
-      const res = await fetch("/api/immatics-chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: updated }),
-      });
-      if (!res.ok || !res.body) throw new Error("stream failed");
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let full = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        full += decoder.decode(value, { stream: true });
-        chatMessagesRef.current = [...updated, { role: "assistant", content: full }];
-        setChatMessages([...chatMessagesRef.current]);
-      }
-      const done = full.toLowerCase().includes("save to form");
-      if (done) setChatReady(true);
-      // Auto-listen for user's reply after Alex finishes — unless interview is done
-      if (!done && guidedOpenRef.current) setTimeout(startAutoListen, 700);
-    } catch {
-      chatMessagesRef.current = [...updated, { role: "assistant", content: "Connection error — please try again." }];
-      setChatMessages([...chatMessagesRef.current]);
-    }
-    setChatLoading(false);
-  };
-
-  const openGuidedInterview = () => {
-    recognitionRef.current?.stop();
+  const openGuidedInterview = async () => {
     chatMessagesRef.current = [];
     setChatMessages([]);
-    setChatInput("");
-    setChatLoading(false);
-    setChatListening(false);
+    setVapiVolume(0);
     setChatReady(false);
-    guidedOpenRef.current = true;
+    setVapiStatus("connecting");
     setGuidedOpen(true);
-    sendChatMessage("__start__");
+    try {
+      const { default: Vapi } = await import("@vapi-ai/web");
+      const vapi = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY!);
+      vapiRef.current = vapi;
+
+      vapi.on("call-start", () => setVapiStatus("active"));
+      vapi.on("volume-level", (v: number) => setVapiVolume(v));
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vapi.on("message", (msg: any) => {
+        if (msg.type === "transcript" && msg.transcriptType === "final") {
+          const entry: ChatMessage = {
+            role: msg.role === "assistant" ? "assistant" : "user",
+            content: msg.transcript,
+          };
+          chatMessagesRef.current = [...chatMessagesRef.current, entry];
+          setChatMessages([...chatMessagesRef.current]);
+          if (msg.role === "assistant" && msg.transcript.toLowerCase().includes("save to form")) {
+            setChatReady(true);
+          }
+        }
+      });
+
+      vapi.on("call-end", async () => {
+        setVapiStatus("analyzing");
+        setVapiVolume(0);
+        const msgs = chatMessagesRef.current;
+        if (msgs.length > 0) {
+          try {
+            const res = await fetch("/api/immatics-transcript", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ messages: msgs.map(m => ({ role: m.role, text: m.content })) }),
+            });
+            if (res.ok) {
+              const { description } = await res.json();
+              if (description) setForm(f => ({ ...f, description }));
+            }
+          } catch { /* ignore */ }
+        }
+        setGuidedOpen(false);
+        setVapiStatus("idle");
+        vapiRef.current = null;
+      });
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vapi.on("error", (e: any) => {
+        console.error("VAPI error:", e);
+        const errMsg: ChatMessage = { role: "assistant", content: "⚠ Connection issue — try again or type below." };
+        chatMessagesRef.current = [...chatMessagesRef.current, errMsg];
+        setChatMessages([...chatMessagesRef.current]);
+        setVapiStatus("idle");
+      });
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (vapi as any).start({
+        model: {
+          provider: "anthropic",
+          model: "claude-3-5-sonnet-20241022",
+          messages: [{ role: "system", content: ALEX_SYSTEM_PROMPT }],
+        },
+        firstMessage: "Hi, I'm Alex — your deviation intake agent. Tell me, what happened?",
+      });
+    } catch (err) {
+      console.error("Failed to start VAPI:", err);
+      const errMsg: ChatMessage = { role: "assistant", content: "⚠ Could not connect. Check your microphone permissions and try again." };
+      chatMessagesRef.current = [errMsg];
+      setChatMessages([errMsg]);
+      setVapiStatus("idle");
+    }
   };
 
+  const stopVapiCall = () => vapiRef.current?.stop();
+
   const closeGuided = () => {
-    guidedOpenRef.current = false;
-    recognitionRef.current?.stop();
-    setChatListening(false);
+    vapiRef.current?.stop();
     setGuidedOpen(false);
+    setVapiStatus("idle");
+    vapiRef.current = null;
   };
 
   const saveChatToForm = async () => {
-    guidedOpenRef.current = false;
-    recognitionRef.current?.stop();
-    setChatListening(false);
-    setChatLoading(true);
+    vapiRef.current?.stop();
+    setVapiStatus("analyzing");
     try {
       const res = await fetch("/api/immatics-transcript", {
         method: "POST",
@@ -266,11 +264,12 @@ export default function ImmaticsDemo() {
         if (description) setForm(f => ({ ...f, description }));
       }
     } catch { /* ignore */ }
-    setChatLoading(false);
     setGuidedOpen(false);
+    setVapiStatus("idle");
+    vapiRef.current = null;
   };
 
-  // Auto-scroll chat to bottom
+  // Auto-scroll transcript to bottom
   useEffect(() => {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
@@ -692,7 +691,7 @@ export default function ImmaticsDemo() {
         )}
       </div>
 
-      {/* ── AI Chat Interview Modal ──────────────────────────────────────────── */}
+      {/* ── Alex Voice Interview Modal ───────────────────────────────────────── */}
       {guidedOpen && (
         <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center px-4">
           <div className="bg-[#0f1420] border border-white/15 rounded-2xl flex flex-col max-w-lg w-full shadow-2xl"
@@ -700,102 +699,104 @@ export default function ImmaticsDemo() {
 
             {/* Header */}
             <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-white/10 flex-shrink-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                  vapiStatus === "active" ? "bg-green-400 animate-pulse" :
+                  vapiStatus === "connecting" ? "bg-yellow-400 animate-pulse" :
+                  vapiStatus === "analyzing" ? "bg-blue-400 animate-pulse" : "bg-gray-500"
+                }`} />
                 <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-xs font-bold">A</div>
                 <div>
                   <div className="text-sm font-bold text-white leading-none">Alex</div>
-                  <div className="text-xs text-gray-500">Deviation Intake Agent</div>
+                  <div className="text-xs text-gray-500">
+                    {vapiStatus === "connecting" && "Connecting…"}
+                    {vapiStatus === "active" && "Live — speak freely"}
+                    {vapiStatus === "analyzing" && "Compiling report…"}
+                    {vapiStatus === "idle" && "Deviation Intake Agent"}
+                  </div>
                 </div>
               </div>
               <button onClick={closeGuided}
                 className="text-gray-500 hover:text-white transition text-lg leading-none px-1">✕</button>
             </div>
 
-            {/* Chat messages */}
-            <div ref={chatScrollRef}
-              className="flex-1 overflow-y-auto px-5 py-4 space-y-3 min-h-0">
-              {chatMessages
-                .filter(m => m.content && m.content !== "__start__")
-                .map((msg, i) => (
-                  <div key={i} className={`flex gap-2 text-sm ${msg.role === "user" ? "justify-end" : ""}`}>
-                    {msg.role === "assistant" && (
-                      <div className="w-6 h-6 rounded-full bg-blue-500/80 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">A</div>
-                    )}
-                    <div className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 leading-snug text-sm ${
-                      msg.role === "assistant"
-                        ? "bg-white/8 text-gray-200 rounded-tl-sm"
-                        : "bg-blue-500/25 text-blue-100 rounded-tr-sm"
-                    }`}>
-                      {msg.content || <span className="inline-block w-4 h-1 bg-blue-400/60 rounded animate-pulse" />}
+            {/* Connecting spinner */}
+            {vapiStatus === "connecting" && (
+              <div className="flex flex-col items-center py-10 gap-4 flex-1">
+                <div className="w-10 h-10 rounded-full border-2 border-blue-400 border-t-transparent animate-spin" />
+                <p className="text-sm text-gray-400">Starting your AI intake agent…</p>
+                <p className="text-xs text-gray-600">Allow microphone access when prompted</p>
+              </div>
+            )}
+
+            {/* Analyzing spinner */}
+            {vapiStatus === "analyzing" && (
+              <div className="flex flex-col items-center py-10 gap-4 flex-1">
+                <div className="w-10 h-10 rounded-full border-2 border-blue-400 border-t-transparent animate-spin" />
+                <p className="text-sm text-gray-400">Extracting deviation details…</p>
+              </div>
+            )}
+
+            {/* Live transcript */}
+            {(vapiStatus === "active" || vapiStatus === "idle") && (
+              <>
+                {/* Volume bars */}
+                {vapiStatus === "active" && (
+                  <div className="flex items-end justify-center gap-1 pt-4 h-12 flex-shrink-0">
+                    {Array.from({ length: 9 }).map((_, i) => (
+                      <div key={i} className="w-1.5 rounded-full bg-blue-400 transition-all duration-75"
+                        style={{
+                          height: `${10 + Math.max(0, (vapiVolume - i * 0.1) * 52)}px`,
+                          opacity: vapiVolume > i * 0.1 ? 1 : 0.12,
+                        }} />
+                    ))}
+                  </div>
+                )}
+
+                <div ref={chatScrollRef}
+                  className="flex-1 overflow-y-auto px-5 py-4 space-y-3 min-h-0">
+                  {chatMessages.length === 0 && vapiStatus === "active" && (
+                    <p className="text-center text-gray-600 text-xs pt-4 italic">Alex is about to speak…</p>
+                  )}
+                  {chatMessages.map((msg, i) => (
+                    <div key={i} className={`flex gap-2 text-sm ${msg.role === "user" ? "justify-end" : ""}`}>
+                      {msg.role === "assistant" && (
+                        <div className="w-6 h-6 rounded-full bg-blue-500/80 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">A</div>
+                      )}
+                      <div className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 leading-snug text-sm ${
+                        msg.role === "assistant"
+                          ? "bg-white/8 text-gray-200 rounded-tl-sm"
+                          : "bg-blue-500/25 text-blue-100 rounded-tr-sm"
+                      }`}>
+                        {msg.content}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              {chatLoading && chatMessages.length === 0 && (
-                <div className="flex gap-2 text-sm">
-                  <div className="w-6 h-6 rounded-full bg-blue-500/80 flex items-center justify-center text-xs font-bold flex-shrink-0">A</div>
-                  <div className="bg-white/8 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
-                    <span className="inline-block w-4 h-1 bg-blue-400/60 rounded animate-pulse" />
-                  </div>
+                  ))}
                 </div>
-              )}
-            </div>
 
-            {/* Bottom bar */}
-            <div className="px-5 pb-5 pt-3 border-t border-white/10 flex-shrink-0 space-y-2">
-
-              {/* Listening / Alex typing indicator */}
-              <div className="flex items-center justify-center gap-2 h-6">
-                {chatListening && (
-                  <>
-                    <span className="flex gap-0.5 items-end h-4">
-                      {[0,1,2,3,4].map(i => (
-                        <span key={i} className="w-1 rounded-full bg-blue-400 animate-bounce inline-block"
-                          style={{ height: `${8 + (i % 3) * 4}px`, animationDelay: `${i * 80}ms` }} />
-                      ))}
-                    </span>
-                    <span className="text-xs text-blue-400 font-medium">Listening — speak your answer</span>
-                  </>
-                )}
-                {chatLoading && !chatListening && (
-                  <span className="text-xs text-gray-500">Alex is thinking…</span>
-                )}
-                {!chatLoading && !chatListening && chatMessages.length > 0 && !chatReady && (
-                  <span className="text-xs text-gray-600">Mic starts automatically after each response</span>
-                )}
-              </div>
-
-              {/* Text input — fallback for typing or editing interim */}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={e => setChatInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChatMessage(chatInput); } }}
-                  placeholder={chatListening ? "Hearing you…" : chatLoading ? "Alex is responding…" : "Or type here and press Enter…"}
-                  disabled={chatLoading}
-                  className={`flex-1 bg-white/5 border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition placeholder:text-gray-600 ${
-                    chatListening ? "border-blue-500/50 text-blue-200" : "border-white/15 focus:border-blue-400"
-                  }`}
-                />
-                <button onClick={() => sendChatMessage(chatInput)} disabled={!chatInput.trim() || chatLoading}
-                  className="flex-shrink-0 w-10 h-10 rounded-xl bg-blue-500 hover:bg-blue-400 disabled:opacity-25 disabled:cursor-not-allowed flex items-center justify-center transition text-white font-bold">
-                  →
-                </button>
-              </div>
-
-              {/* Save / done */}
-              {chatReady ? (
-                <button onClick={saveChatToForm} disabled={chatLoading}
-                  className="w-full py-2.5 rounded-xl text-sm font-bold bg-green-500/20 border border-green-500/40 text-green-400 hover:bg-green-500/30 transition">
-                  {chatLoading ? "Saving…" : "Save to Form ✓"}
-                </button>
-              ) : (
-                <button onClick={saveChatToForm} disabled={chatMessages.length < 2 || chatLoading}
-                  className="w-full text-xs text-gray-600 hover:text-gray-400 transition disabled:opacity-30 disabled:cursor-not-allowed py-1">
-                  Done talking — save to form
-                </button>
-              )}
-            </div>
+                {/* Bottom controls */}
+                <div className="px-5 pb-5 pt-3 border-t border-white/10 flex-shrink-0 space-y-2">
+                  {vapiStatus === "active" && (
+                    <button onClick={stopVapiCall}
+                      className="w-full py-2.5 rounded-xl text-sm font-bold bg-red-500/15 border border-red-500/35 text-red-400 hover:bg-red-500/25 transition">
+                      End Interview
+                    </button>
+                  )}
+                  {chatReady && (
+                    <button onClick={saveChatToForm}
+                      className="w-full py-2.5 rounded-xl text-sm font-bold bg-green-500/20 border border-green-500/40 text-green-400 hover:bg-green-500/30 transition">
+                      Save to Form ✓
+                    </button>
+                  )}
+                  {!chatReady && chatMessages.length >= 2 && vapiStatus === "idle" && (
+                    <button onClick={saveChatToForm}
+                      className="w-full text-xs text-gray-500 hover:text-gray-300 transition py-1">
+                      Done talking — save to form
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
 
           </div>
         </div>
