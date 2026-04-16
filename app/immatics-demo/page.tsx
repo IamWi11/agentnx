@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 type Step = "form" | "analyzing" | "result";
 
@@ -43,6 +43,24 @@ const ANALYSIS_STEPS = [
   "Creating deviation record in Vault...",
 ];
 
+const LOCATIONS = [
+  "Suite 100 — Cell Therapy Suite A",
+  "Suite 100 — Cell Therapy Suite B",
+  "Suite 100 — Cell Therapy Suite C",
+  "Suite 100 — QC Laboratory",
+  "Suite 100 — Engineering / Maintenance Room",
+  "Suite 100 — Formulation Suite",
+  "Suite 100 — Warehouse / Cold Storage",
+  "Suite 100 — Corridor / Common Area",
+];
+
+const PRODUCTS = [
+  "anzu-cel (IMA203)",
+  "IMA203CD8",
+  "IMA402",
+  "IMA401",
+];
+
 const CRITICALITY_COLORS: Record<string, string> = {
   Critical: "bg-red-500/20 border-red-500/40 text-red-400",
   Major:    "bg-orange-500/20 border-orange-500/40 text-orange-400",
@@ -55,17 +73,67 @@ export default function ImmaticsDemo() {
   const [analysisStep, setAnalysisStep] = useState(0);
   const [result, setResult] = useState<DeviationResult | null>(null);
   const [activeTab, setActiveTab] = useState<"veeva" | "teams" | "email">("veeva");
+  const [recordingField, setRecordingField] = useState<"description" | "immediateActions" | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
   const [form, setForm] = useState({
     description: "",
     department: "Cell Therapy Manufacturing",
     product: "",
     batchNumber: "",
-    location: "Stafford, TX — Suite 100",
+    location: "Suite 100 — Cell Therapy Suite A",
     immediateActions: "",
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const startRecording = (field: "description" | "immediateActions") => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { alert("Voice recording requires Chrome or Safari."); return; }
+
+    // Toggle off if already recording this field
+    if (recordingField === field) {
+      recognitionRef.current?.stop();
+      setRecordingField(null);
+      return;
+    }
+
+    // Stop any active recording first
+    recognitionRef.current?.stop();
+
+    const rec = new SR();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = "en-US";
+
+    let finalText = form[field] ? form[field] + " " : "";
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (event: any) => {
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          finalText += event.results[i][0].transcript + " ";
+        } else {
+          interim = event.results[i][0].transcript;
+        }
+      }
+      setForm(f => ({ ...f, [field]: (finalText + interim).trimStart() }));
+    };
+
+    rec.onend = () => {
+      setRecordingField(null);
+      setForm(f => ({ ...f, [field]: finalText.trim() }));
+    };
+
+    rec.onerror = () => { setRecordingField(null); };
+
+    recognitionRef.current = rec;
+    rec.start();
+    setRecordingField(field);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -105,7 +173,7 @@ export default function ImmaticsDemo() {
       department: "Cell Therapy Manufacturing",
       product: "anzu-cel (IMA203)",
       batchNumber: "IMA203-2026-047",
-      location: "Stafford, TX — Suite 100, Cell Therapy Suite B",
+      location: "Suite 100 — Cell Therapy Suite B",
       immediateActions: "Incubator temperature restored to 37°C. Batch quarantined pending QA assessment. Maintenance notified to inspect incubator calibration. Patient care team notified of potential delay.",
     });
   };
@@ -194,18 +262,21 @@ export default function ImmaticsDemo() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold mb-1.5 text-gray-300">Location</label>
-                  <input name="location" value={form.location} onChange={handleChange} required
-                    className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400"
-                    placeholder="Suite / Room / Area" />
+                  <select name="location" value={form.location} onChange={handleChange}
+                    className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400">
+                    {LOCATIONS.map(l => <option key={l}>{l}</option>)}
+                  </select>
                 </div>
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold mb-1.5 text-gray-300">Product</label>
-                  <input name="product" value={form.product} onChange={handleChange} required
-                    className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400"
-                    placeholder="e.g. anzu-cel (IMA203)" />
+                  <select name="product" value={form.product} onChange={handleChange}
+                    className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400">
+                    <option value="">— Select product —</option>
+                    {PRODUCTS.map(p => <option key={p}>{p}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold mb-1.5 text-gray-300">Batch Number</label>
@@ -216,17 +287,59 @@ export default function ImmaticsDemo() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold mb-1.5 text-gray-300">Event Description</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-sm font-semibold text-gray-300">Event Description</label>
+                  <button type="button" onClick={() => startRecording("description")}
+                    className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border transition ${
+                      recordingField === "description"
+                        ? "bg-red-500/20 border-red-500/50 text-red-400 animate-pulse"
+                        : "bg-white/5 border-white/20 text-gray-400 hover:text-white hover:border-white/40"
+                    }`}>
+                    <span>{recordingField === "description" ? "⏹" : "🎙️"}</span>
+                    {recordingField === "description" ? "Stop Recording" : "Voice Record"}
+                  </button>
+                </div>
                 <textarea name="description" value={form.description} onChange={handleChange} required rows={5}
-                  className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400 resize-none"
-                  placeholder="Describe what happened, when it was discovered, and what was observed..." />
+                  className={`w-full bg-white/10 border rounded-lg px-4 py-2.5 text-sm focus:outline-none resize-none transition ${
+                    recordingField === "description"
+                      ? "border-red-500/50 focus:border-red-400"
+                      : "border-white/20 focus:border-blue-400"
+                  }`}
+                  placeholder="Describe what happened, when it was discovered, and what was observed — or click Voice Record to speak it." />
+                {recordingField === "description" && (
+                  <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                    Listening — speak clearly. Click Stop Recording when done.
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="block text-sm font-semibold mb-1.5 text-gray-300">Immediate Actions Taken</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-sm font-semibold text-gray-300">Immediate Actions Taken</label>
+                  <button type="button" onClick={() => startRecording("immediateActions")}
+                    className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border transition ${
+                      recordingField === "immediateActions"
+                        ? "bg-red-500/20 border-red-500/50 text-red-400 animate-pulse"
+                        : "bg-white/5 border-white/20 text-gray-400 hover:text-white hover:border-white/40"
+                    }`}>
+                    <span>{recordingField === "immediateActions" ? "⏹" : "🎙️"}</span>
+                    {recordingField === "immediateActions" ? "Stop Recording" : "Voice Record"}
+                  </button>
+                </div>
                 <textarea name="immediateActions" value={form.immediateActions} onChange={handleChange} rows={3}
-                  className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400 resize-none"
-                  placeholder="Actions taken immediately after discovery..." />
+                  className={`w-full bg-white/10 border rounded-lg px-4 py-2.5 text-sm focus:outline-none resize-none transition ${
+                    recordingField === "immediateActions"
+                      ? "border-red-500/50 focus:border-red-400"
+                      : "border-white/20 focus:border-blue-400"
+                  }`}
+                  placeholder="Actions taken immediately after discovery — or click Voice Record to speak it." />
+                {recordingField === "immediateActions" && (
+                  <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                    Listening — speak clearly. Click Stop Recording when done.
+                  </p>
+                )}
               </div>
 
               <button type="submit"
@@ -421,7 +534,7 @@ export default function ImmaticsDemo() {
                   className="bg-blue-500 hover:bg-blue-400 text-white font-semibold px-6 py-2.5 rounded-full text-sm transition">
                   Start the Pilot →
                 </a>
-                <button onClick={() => { setStep("form"); setResult(null); setForm({ description: "", department: "Cell Therapy Manufacturing", product: "", batchNumber: "", location: "Stafford, TX — Suite 100", immediateActions: "" }); }}
+                <button onClick={() => { setStep("form"); setResult(null); setRecordingField(null); recognitionRef.current?.stop(); setForm({ description: "", department: "Cell Therapy Manufacturing", product: "", batchNumber: "", location: "Suite 100 — Cell Therapy Suite A", immediateActions: "" }); }}
                   className="bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-2.5 rounded-full text-sm transition">
                   Run Another Event
                 </button>
