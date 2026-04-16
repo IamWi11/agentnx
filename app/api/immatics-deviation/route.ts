@@ -94,12 +94,14 @@ Respond ONLY with this exact JSON (no markdown, no extra text):
   try {
     const message = await client.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 1024,
+      max_tokens: 2048,
       messages: [{ role: "user", content: prompt }],
     });
 
     const raw = message.content[0].type === "text" ? message.content[0].text : "";
-    const result = JSON.parse(raw);
+    // Strip markdown code fences if Claude wraps the JSON despite instructions
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
+    const result = JSON.parse(cleaned);
 
     const deviationId = generateDeviationId();
     const now = new Date();
