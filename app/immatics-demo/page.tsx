@@ -85,6 +85,7 @@ export default function ImmaticsDemo() {
   const [chatReady, setChatReady] = useState(false); // Alex said "Got it"
   const chatMessagesRef = useRef<ChatMessage[]>([]);
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const guidedOpenRef = useRef(false); // track modal open state without closure issues
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const [form, setForm] = useState({
@@ -147,8 +148,48 @@ export default function ImmaticsDemo() {
     setRecordingField(field);
   };
 
+  // Start listening and auto-send when user stops speaking
+  const startAutoListen = () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR || !guidedOpenRef.current) return;
+    recognitionRef.current?.stop();
+    const rec = new SR();
+    rec.lang = "en-US";
+    rec.continuous = false;
+    rec.interimResults = true;
+    let hasFinal = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
+      let interim = "";
+      let final = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) { final += e.results[i][0].transcript; hasFinal = true; }
+        else interim = e.results[i][0].transcript;
+      }
+      // Show interim live in input box
+      if (interim) setChatInput(interim);
+      if (final) {
+        setChatInput("");
+        setChatListening(false);
+        sendChatMessage(final);
+      }
+    };
+    rec.onend = () => {
+      setChatListening(false);
+      if (!hasFinal) setChatInput(""); // clear stale interim if no final captured
+    };
+    rec.onerror = () => { setChatListening(false); setChatInput(""); };
+    recognitionRef.current = rec;
+    rec.start();
+    setChatListening(true);
+    setChatInput("");
+  };
+
   const sendChatMessage = async (userText: string) => {
     if (!userText.trim() || chatLoading) return;
+    recognitionRef.current?.stop();
+    setChatListening(false);
     const userMsg: ChatMessage = { role: "user", content: userText.trim() };
     const updated = [...chatMessagesRef.current, userMsg];
     chatMessagesRef.current = updated;
@@ -156,9 +197,8 @@ export default function ImmaticsDemo() {
     setChatInput("");
     setChatLoading(true);
 
-    // Placeholder for streaming response
-    const placeholder: ChatMessage = { role: "assistant", content: "" };
-    chatMessagesRef.current = [...updated, placeholder];
+    // Placeholder bubble for streaming response
+    chatMessagesRef.current = [...updated, { role: "assistant", content: "" }];
     setChatMessages([...chatMessagesRef.current]);
 
     try {
@@ -179,11 +219,12 @@ export default function ImmaticsDemo() {
         chatMessagesRef.current = [...updated, { role: "assistant", content: full }];
         setChatMessages([...chatMessagesRef.current]);
       }
-      // Detect when Alex signals completion
-      if (full.toLowerCase().includes("save to form")) setChatReady(true);
+      const done = full.toLowerCase().includes("save to form");
+      if (done) setChatReady(true);
+      // Auto-listen for user's reply after Alex finishes — unless interview is done
+      if (!done && guidedOpenRef.current) setTimeout(startAutoListen, 700);
     } catch {
-      const errMsg: ChatMessage = { role: "assistant", content: "Connection error — please try again." };
-      chatMessagesRef.current = [...updated, errMsg];
+      chatMessagesRef.current = [...updated, { role: "assistant", content: "Connection error — please try again." }];
       setChatMessages([...chatMessagesRef.current]);
     }
     setChatLoading(false);
@@ -197,18 +238,22 @@ export default function ImmaticsDemo() {
     setChatLoading(false);
     setChatListening(false);
     setChatReady(false);
+    guidedOpenRef.current = true;
     setGuidedOpen(true);
-    // Kick off Alex's opening line
     sendChatMessage("__start__");
   };
 
   const closeGuided = () => {
+    guidedOpenRef.current = false;
     recognitionRef.current?.stop();
     setChatListening(false);
     setGuidedOpen(false);
   };
 
   const saveChatToForm = async () => {
+    guidedOpenRef.current = false;
+    recognitionRef.current?.stop();
+    setChatListening(false);
     setChatLoading(true);
     try {
       const res = await fetch("/api/immatics-transcript", {
@@ -223,28 +268,6 @@ export default function ImmaticsDemo() {
     } catch { /* ignore */ }
     setChatLoading(false);
     setGuidedOpen(false);
-  };
-
-  const startChatVoice = () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) { alert("Voice input requires Chrome or Safari."); return; }
-    if (chatListening) { recognitionRef.current?.stop(); setChatListening(false); return; }
-    recognitionRef.current?.stop();
-    const rec = new SR();
-    rec.lang = "en-US";
-    rec.interimResults = false;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    rec.onresult = (e: any) => {
-      const text = e.results[0][0].transcript;
-      setChatListening(false);
-      sendChatMessage(text);
-    };
-    rec.onend = () => setChatListening(false);
-    rec.onerror = () => setChatListening(false);
-    recognitionRef.current = rec;
-    rec.start();
-    setChatListening(true);
   };
 
   // Auto-scroll chat to bottom
@@ -717,44 +740,58 @@ export default function ImmaticsDemo() {
               )}
             </div>
 
-            {/* Save to form CTA — appears when Alex is done */}
-            {chatReady && (
-              <div className="px-5 pb-2">
-                <button onClick={saveChatToForm} disabled={chatLoading}
-                  className="w-full py-2.5 rounded-xl text-sm font-bold bg-green-500/20 border border-green-500/40 text-green-400 hover:bg-green-500/30 transition">
-                  {chatLoading ? "Saving…" : "Save to Form ✓"}
-                </button>
-              </div>
-            )}
+            {/* Bottom bar */}
+            <div className="px-5 pb-5 pt-3 border-t border-white/10 flex-shrink-0 space-y-2">
 
-            {/* Input row */}
-            <div className="px-5 pb-5 pt-2 border-t border-white/10 flex-shrink-0">
+              {/* Listening / Alex typing indicator */}
+              <div className="flex items-center justify-center gap-2 h-6">
+                {chatListening && (
+                  <>
+                    <span className="flex gap-0.5 items-end h-4">
+                      {[0,1,2,3,4].map(i => (
+                        <span key={i} className="w-1 rounded-full bg-blue-400 animate-bounce inline-block"
+                          style={{ height: `${8 + (i % 3) * 4}px`, animationDelay: `${i * 80}ms` }} />
+                      ))}
+                    </span>
+                    <span className="text-xs text-blue-400 font-medium">Listening — speak your answer</span>
+                  </>
+                )}
+                {chatLoading && !chatListening && (
+                  <span className="text-xs text-gray-500">Alex is thinking…</span>
+                )}
+                {!chatLoading && !chatListening && chatMessages.length > 0 && !chatReady && (
+                  <span className="text-xs text-gray-600">Mic starts automatically after each response</span>
+                )}
+              </div>
+
+              {/* Text input — fallback for typing or editing interim */}
               <div className="flex gap-2">
-                <button onClick={startChatVoice}
-                  className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border transition ${
-                    chatListening
-                      ? "bg-red-500/20 border-red-500/50 text-red-400 animate-pulse"
-                      : "bg-white/5 border-white/15 text-gray-400 hover:text-white hover:border-white/30"
-                  }`}>
-                  {chatListening ? "⏹" : "🎙️"}
-                </button>
                 <input
                   type="text"
                   value={chatInput}
                   onChange={e => setChatInput(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChatMessage(chatInput); } }}
-                  placeholder={chatListening ? "Listening…" : "Type or speak your answer…"}
-                  disabled={chatLoading || chatListening}
-                  className="flex-1 bg-white/5 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-400 placeholder:text-gray-600 disabled:opacity-50"
+                  placeholder={chatListening ? "Hearing you…" : chatLoading ? "Alex is responding…" : "Or type here and press Enter…"}
+                  disabled={chatLoading}
+                  className={`flex-1 bg-white/5 border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition placeholder:text-gray-600 ${
+                    chatListening ? "border-blue-500/50 text-blue-200" : "border-white/15 focus:border-blue-400"
+                  }`}
                 />
                 <button onClick={() => sendChatMessage(chatInput)} disabled={!chatInput.trim() || chatLoading}
-                  className="flex-shrink-0 w-10 h-10 rounded-xl bg-blue-500 hover:bg-blue-400 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition text-white font-bold text-base">
+                  className="flex-shrink-0 w-10 h-10 rounded-xl bg-blue-500 hover:bg-blue-400 disabled:opacity-25 disabled:cursor-not-allowed flex items-center justify-center transition text-white font-bold">
                   →
                 </button>
               </div>
-              {!chatReady && (
+
+              {/* Save / done */}
+              {chatReady ? (
+                <button onClick={saveChatToForm} disabled={chatLoading}
+                  className="w-full py-2.5 rounded-xl text-sm font-bold bg-green-500/20 border border-green-500/40 text-green-400 hover:bg-green-500/30 transition">
+                  {chatLoading ? "Saving…" : "Save to Form ✓"}
+                </button>
+              ) : (
                 <button onClick={saveChatToForm} disabled={chatMessages.length < 2 || chatLoading}
-                  className="mt-2 w-full text-xs text-gray-600 hover:text-gray-400 transition disabled:opacity-30 disabled:cursor-not-allowed">
+                  className="w-full text-xs text-gray-600 hover:text-gray-400 transition disabled:opacity-30 disabled:cursor-not-allowed py-1">
                   Done talking — save to form
                 </button>
               )}
