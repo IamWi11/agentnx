@@ -147,6 +147,28 @@ export default function ImmaticsDemo() {
     setRecordingField(field);
   };
 
+  const speak = (text: string) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    const pickVoice = () => {
+      const voices = window.speechSynthesis.getVoices();
+      // Prefer high-quality neural voices in order
+      const preferred = ["Samantha", "Karen", "Moira", "Tessa", "Google US English", "Microsoft Aria"];
+      for (const name of preferred) {
+        const v = voices.find(v => v.name.includes(name));
+        if (v) return v;
+      }
+      // Fallback: first non-compact en-US voice
+      return voices.find(v => v.lang.startsWith("en") && !v.name.toLowerCase().includes("compact")) ?? null;
+    };
+    const voice = pickVoice();
+    if (voice) utter.voice = voice;
+    utter.rate = 0.92;
+    utter.pitch = 1.0;
+    window.speechSynthesis.speak(utter);
+  };
+
   const startAutoListen = () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -175,6 +197,7 @@ export default function ImmaticsDemo() {
 
   const sendChat = async (text: string) => {
     if (!text.trim() || chatLoading) return;
+    window.speechSynthesis?.cancel(); // stop Alex speaking when user replies
     recognitionRef.current?.stop();
     setChatListening(false);
     const userMsg: ChatMessage = { role: "user", content: text.trim() };
@@ -203,7 +226,8 @@ export default function ImmaticsDemo() {
         setChatMessages([...chatMessagesRef.current]);
       }
       if (full.toLowerCase().includes("save to form")) setChatReady(true);
-      if (!full.toLowerCase().includes("save to form") && guidedOpenRef.current) setTimeout(startAutoListen, 700);
+      if (full && guidedOpenRef.current) speak(full);
+      if (!full.toLowerCase().includes("save to form") && guidedOpenRef.current) setTimeout(startAutoListen, 2200);
     } catch {
       chatMessagesRef.current = [...updated, { role: "assistant", content: "Connection error — please try again." }];
       setChatMessages([...chatMessagesRef.current]);
@@ -224,6 +248,7 @@ export default function ImmaticsDemo() {
   const closeGuided = () => {
     guidedOpenRef.current = false;
     recognitionRef.current?.stop();
+    window.speechSynthesis?.cancel();
     setChatListening(false);
     setGuidedOpen(false);
   };
@@ -231,6 +256,7 @@ export default function ImmaticsDemo() {
   const saveChatToForm = async () => {
     guidedOpenRef.current = false;
     recognitionRef.current?.stop();
+    window.speechSynthesis?.cancel();
     setChatListening(false);
     setChatLoading(true);
     try {
