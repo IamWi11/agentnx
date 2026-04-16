@@ -138,7 +138,7 @@ export default function PricingPage() {
           <h3 className="text-xl font-bold mb-2">{p.govTitle}</h3>
           <p className="text-gray-400 text-sm mb-4">{p.govDesc}</p>
           <motion.a
-            href="mailto:william@image101llc.com?subject=AgentNX Enterprise Inquiry"
+            href="mailto:william@agentnx.ai?subject=AgentNX Enterprise Inquiry"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.97 }}
             className="inline-block bg-white/10 hover:bg-white/20 text-white font-semibold px-8 py-3 rounded-full transition"

@@ -1,4 +1,4 @@
-Contact: mailto:william.l.munoz@gmail.com
+Contact: mailto:william@agentnx.ai
 Expires: 2027-04-13T00:00:00.000Z
 Preferred-Languages: en
 Canonical: https://agentnx.ai/.well-known/security.txt

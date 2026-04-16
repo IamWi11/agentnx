@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     logger.info("request-demo", "Demo request received", { email: safeEmail });
     await resend.emails.send({
       from: "AgentNX <noreply@agentnx.ai>",
-      to: "image1.ohhh1@gmail.com",
+      to: "william@agentnx.ai",
       subject: "New Demo Request — AgentNX.ai",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
