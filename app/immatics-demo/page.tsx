@@ -214,22 +214,26 @@ export default function ImmaticsDemo() {
         vapiRef.current = null;
       });
 
+      let errShown = false;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vapi.on("error", (e: any) => {
         console.error("VAPI error:", e);
-        const errMsg: ChatMessage = { role: "assistant", content: "⚠ Connection issue — try again or type below." };
-        chatMessagesRef.current = [...chatMessagesRef.current, errMsg];
-        setChatMessages([...chatMessagesRef.current]);
+        if (errShown) return;
+        errShown = true;
+        const errMsg: ChatMessage = { role: "assistant", content: "⚠ Could not connect. Make sure microphone access is allowed, then close and try again." };
+        chatMessagesRef.current = [errMsg];
+        setChatMessages([errMsg]);
         setVapiStatus("idle");
       });
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (vapi as any).start({
         model: {
-          provider: "anthropic",
-          model: "claude-3-5-sonnet-20241022",
+          provider: "openai",
+          model: "gpt-4o",
           messages: [{ role: "system", content: ALEX_SYSTEM_PROMPT }],
         },
+        voice: { provider: "openai", voiceId: "nova" },
         firstMessage: "Hi, I'm Alex — your deviation intake agent. Tell me, what happened?",
       });
     } catch (err) {
