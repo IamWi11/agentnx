@@ -57,8 +57,8 @@ export default function VapiCallButton({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await vapi.start({
           model: {
-            provider: "openai",
-            model: "gpt-4o-mini",
+            provider: "anthropic",
+            model: "claude-3-5-sonnet-20241022",
             messages: [{ role: "system", content: assistantConfig.systemPrompt }],
           },
           firstMessage: assistantConfig.firstMessage,
