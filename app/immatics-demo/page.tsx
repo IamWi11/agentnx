@@ -61,32 +61,21 @@ const PRODUCTS = [
   "IMA401",
 ];
 
-const GUIDED_QUESTIONS = [
-  {
-    key: "event",
-    label: "What happened?",
-    prompt: "What happened? Describe the deviation event in your own words.",
-    hint: "e.g. The incubator temperature alarm triggered at 2am…",
-  },
-  {
-    key: "when",
-    label: "When was it discovered?",
-    prompt: "When was it discovered? Please state the date and time.",
-    hint: "e.g. April 16th at 02:14…",
-  },
-  {
-    key: "observed",
-    label: "What was observed?",
-    prompt: "What was observed? Include any measurements, readings, or visible signs.",
-    hint: "e.g. Temperature read 33.2 degrees instead of the specified 37 degrees…",
-  },
-  {
-    key: "status",
-    label: "Current batch status?",
-    prompt: "What is the current status of the batch or affected area?",
-    hint: "e.g. Batch is at Day 6 of 14-day expansion, currently quarantined…",
-  },
-];
+const VAPI_SYSTEM_PROMPT = `You are Alex, a GMP deviation intake agent for immatics — a clinical-stage cell therapy company developing pTCR-T cell therapies for cancer. You assist manufacturing operators in reporting deviation events verbally.
+
+Your job is to have a natural, professional conversation to collect:
+1. What happened (the deviation event itself)
+2. When it was discovered (date and time)
+3. What was observed (measurements, readings, alarms, visible signs)
+4. Current status of the affected batch or area
+
+Be conversational and warm — not robotic or scripted. Ask natural follow-up questions if an answer is vague or missing detail. For example: "Do you know the exact temperature reading at the time?" or "Was the batch quarantined immediately?"
+
+If the operator asks you questions about SOPs, criticality classification, escalation steps, or GMP requirements — answer them helpfully. You are knowledgeable about cell therapy manufacturing, 21 CFR Part 11, GMP deviations, CAPA, and Veeva Vault QMS processes. You can explain concepts like Major vs Critical deviations, when to notify QA, and what documentation is typically required.
+
+When you have collected all four pieces of information, say: "Perfect — I have everything I need. I'll compile this into the deviation record now." Then end the call naturally.
+
+Speak in short, clear sentences — this is a voice call. Avoid bullet points or long paragraphs. Keep a professional but approachable tone.`;
 
 const CRITICALITY_COLORS: Record<string, string> = {
   Critical: "bg-red-500/20 border-red-500/40 text-red-400",
@@ -102,10 +91,12 @@ export default function ImmaticsDemo() {
   const [activeTab, setActiveTab] = useState<"veeva" | "teams" | "email">("veeva");
   const [recordingField, setRecordingField] = useState<"description" | "immediateActions" | null>(null);
   const [guidedOpen, setGuidedOpen] = useState(false);
-  const [guidedStep, setGuidedStep] = useState(0);
-  const [guidedAnswers, setGuidedAnswers] = useState<Record<string, string>>({});
-  const [guidedListening, setGuidedListening] = useState(false);
-  const [guidedTranscript, setGuidedTranscript] = useState("");
+  const [vapiStatus, setVapiStatus] = useState<"idle" | "connecting" | "active" | "analyzing">("idle");
+  const [vapiMessages, setVapiMessages] = useState<Array<{role: string; text: string}>>([]);
+  const [vapiVolume, setVapiVolume] = useState(0);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const vapiRef = useRef<any>(null);
+  const vapiMessagesRef = useRef<Array<{role: string; text: string}>>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const [form, setForm] = useState({
@@ -168,84 +159,78 @@ export default function ImmaticsDemo() {
     setRecordingField(field);
   };
 
-  const speakQuestion = (text: string) => {
-    window.speechSynthesis?.cancel();
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.rate = 0.95;
-    utt.pitch = 1;
-    window.speechSynthesis?.speak(utt);
-  };
-
-  const startGuidedListening = () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) { alert("Voice recording requires Chrome or Safari."); return; }
-    recognitionRef.current?.stop();
-    const rec = new SR();
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.lang = "en-US";
-    let final = "";
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    rec.onresult = (event: any) => {
-      let interim = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) final += event.results[i][0].transcript + " ";
-        else interim = event.results[i][0].transcript;
-      }
-      setGuidedTranscript((final + interim).trimStart());
-    };
-    rec.onend = () => setGuidedListening(false);
-    rec.onerror = () => setGuidedListening(false);
-    recognitionRef.current = rec;
-    rec.start();
-    setGuidedListening(true);
-  };
-
-  const openGuidedInterview = () => {
-    recognitionRef.current?.stop();
-    setGuidedAnswers({});
-    setGuidedStep(0);
-    setGuidedTranscript("");
-    setGuidedListening(false);
+  const openGuidedInterview = async () => {
+    vapiMessagesRef.current = [];
+    setVapiMessages([]);
+    setVapiVolume(0);
+    setVapiStatus("connecting");
     setGuidedOpen(true);
-    setTimeout(() => speakQuestion(GUIDED_QUESTIONS[0].prompt), 400);
-    setTimeout(() => startGuidedListening(), 2200);
-  };
+    try {
+      const { default: Vapi } = await import("@vapi-ai/web");
+      const vapi = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY!);
+      vapiRef.current = vapi;
 
-  const guidedNext = () => {
-    window.speechSynthesis?.cancel();
-    recognitionRef.current?.stop();
-    const q = GUIDED_QUESTIONS[guidedStep];
-    const answer = guidedTranscript.trim();
-    const updated = { ...guidedAnswers, [q.key]: answer };
-    setGuidedAnswers(updated);
-    setGuidedTranscript("");
-    setGuidedListening(false);
+      vapi.on("call-start", () => setVapiStatus("active"));
+      vapi.on("volume-level", (v: number) => setVapiVolume(v));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vapi.on("message", (msg: any) => {
+        if (msg.type === "transcript" && msg.transcriptType === "final") {
+          const entry = { role: msg.role as string, text: msg.transcript as string };
+          vapiMessagesRef.current = [...vapiMessagesRef.current, entry];
+          setVapiMessages([...vapiMessagesRef.current]);
+        }
+      });
+      vapi.on("call-end", async () => {
+        setVapiStatus("analyzing");
+        setVapiVolume(0);
+        const msgs = vapiMessagesRef.current;
+        if (msgs.length > 0) {
+          try {
+            const res = await fetch("/api/immatics-transcript", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ messages: msgs }),
+            });
+            if (res.ok) {
+              const { description } = await res.json();
+              if (description) setForm(f => ({ ...f, description }));
+            }
+          } catch { /* ignore parse errors */ }
+        }
+        setGuidedOpen(false);
+        setVapiStatus("idle");
+        vapiRef.current = null;
+      });
+      vapi.on("error", () => {
+        setVapiStatus("idle");
+        setGuidedOpen(false);
+        vapiRef.current = null;
+      });
 
-    if (guidedStep < GUIDED_QUESTIONS.length - 1) {
-      const next = guidedStep + 1;
-      setGuidedStep(next);
-      setTimeout(() => speakQuestion(GUIDED_QUESTIONS[next].prompt), 300);
-      setTimeout(() => startGuidedListening(), 2200);
-    } else {
-      // Compile all answers into structured description
-      const compiled = [
-        updated.event  && `What happened: ${updated.event.trim()}`,
-        updated.when   && `Discovered: ${updated.when.trim()}`,
-        updated.observed && `Observed: ${updated.observed.trim()}`,
-        updated.status && `Current batch status: ${updated.status.trim()}`,
-      ].filter(Boolean).join(" ");
-      setForm(f => ({ ...f, description: compiled }));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (vapi as any).start({
+        model: {
+          provider: "anthropic",
+          model: "claude-3-5-sonnet-20241022",
+          messages: [{ role: "system", content: VAPI_SYSTEM_PROMPT }],
+        },
+        firstMessage: "Hi, I'm Alex — your deviation intake agent. Tell me, what happened?",
+      });
+    } catch {
+      setVapiStatus("idle");
       setGuidedOpen(false);
     }
   };
 
+  const stopVapiCall = () => {
+    vapiRef.current?.stop();
+  };
+
   const closeGuided = () => {
-    window.speechSynthesis?.cancel();
-    recognitionRef.current?.stop();
+    vapiRef.current?.stop();
     setGuidedOpen(false);
-    setGuidedListening(false);
+    setVapiStatus("idle");
+    vapiRef.current = null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -663,89 +648,92 @@ export default function ImmaticsDemo() {
         )}
       </div>
 
-      {/* ── Guided Interview Modal ──────────────────────────────────────────── */}
+      {/* ── AI Voice Interview Modal ─────────────────────────────────────────── */}
       {guidedOpen && (
         <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center px-4">
-          <div className="bg-[#0f1420] border border-white/15 rounded-2xl p-8 max-w-xl w-full shadow-2xl">
+          <div className="bg-[#0f1420] border border-white/15 rounded-2xl p-7 max-w-lg w-full shadow-2xl">
 
-            {/* Header row */}
+            {/* Header */}
             <div className="flex items-center justify-between mb-5">
-              <span className="text-xs font-bold uppercase tracking-widest text-blue-400">
-                Guided Interview — Question {guidedStep + 1} of {GUIDED_QUESTIONS.length}
-              </span>
-              <button onClick={closeGuided}
-                className="text-gray-500 hover:text-white text-sm transition px-2 py-0.5">
-                ✕ Cancel
-              </button>
-            </div>
-
-            {/* Progress bar */}
-            <div className="flex gap-2 mb-6">
-              {GUIDED_QUESTIONS.map((_, i) => (
-                <div key={i} className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-                  i < guidedStep ? "bg-blue-500" : i === guidedStep ? "bg-blue-400 animate-pulse" : "bg-white/10"
+              <div className="flex items-center gap-2.5">
+                <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                  vapiStatus === "active" ? "bg-green-400 animate-pulse" :
+                  vapiStatus === "connecting" ? "bg-yellow-400 animate-pulse" :
+                  vapiStatus === "analyzing" ? "bg-blue-400 animate-pulse" : "bg-gray-500"
                 }`} />
-              ))}
-            </div>
-
-            {/* Question */}
-            <div className="text-xs text-gray-500 uppercase tracking-wider mb-1.5">
-              {GUIDED_QUESTIONS[guidedStep].label}
-            </div>
-            <h3 className="text-xl font-bold text-white mb-1.5 leading-snug">
-              {GUIDED_QUESTIONS[guidedStep].prompt}
-            </h3>
-            <p className="text-xs text-gray-500 italic mb-5">
-              {GUIDED_QUESTIONS[guidedStep].hint}
-            </p>
-
-            {/* Transcript — editable so user can also type */}
-            <textarea
-              value={guidedTranscript}
-              onChange={(e) => setGuidedTranscript(e.target.value)}
-              rows={3}
-              className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-sm transition resize-none focus:outline-none mb-2 ${
-                guidedListening
-                  ? "border-red-500/50 ring-1 ring-red-500/25"
-                  : "border-white/15 focus:border-blue-400"
-              }`}
-              placeholder="Your answer appears here as you speak — or type directly…"
-            />
-
-            {/* Listening status */}
-            <div className="h-5 mb-5 flex items-center gap-2">
-              {guidedListening ? (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse inline-block" />
-                  <span className="text-xs text-red-400">Listening — speak your answer clearly</span>
-                </>
-              ) : guidedTranscript ? (
-                <span className="text-xs text-gray-500">Edit above or tap Next when ready</span>
-              ) : (
-                <span className="text-xs text-gray-500">Tap Speak to record your answer</span>
-              )}
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={startGuidedListening}
-                disabled={guidedListening}
-                className={`flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold border transition ${
-                  guidedListening
-                    ? "bg-red-500/15 border-red-500/40 text-red-400 cursor-default"
-                    : "bg-white/5 border-white/20 text-gray-300 hover:bg-white/10 hover:border-white/40"
-                }`}>
-                {guidedListening ? "🎙️ Listening…" : "🎙️ Speak"}
-              </button>
-              <button
-                type="button"
-                onClick={guidedNext}
-                className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-blue-500 hover:bg-blue-400 text-white transition">
-                {guidedStep < GUIDED_QUESTIONS.length - 1 ? "Next →" : "Done — Save Description ✓"}
+                <span className="text-sm font-bold text-white">AI Deviation Intake Agent</span>
+                {vapiStatus === "active" && <span className="text-xs text-green-400 font-semibold">● Live</span>}
+                {vapiStatus === "connecting" && <span className="text-xs text-yellow-400">Connecting…</span>}
+                {vapiStatus === "analyzing" && <span className="text-xs text-blue-400">Compiling report…</span>}
+              </div>
+              <button onClick={closeGuided}
+                className="text-gray-500 hover:text-white text-lg leading-none transition px-1">
+                ✕
               </button>
             </div>
+
+            {/* Connecting / analyzing spinner */}
+            {(vapiStatus === "connecting" || vapiStatus === "analyzing") && (
+              <div className="flex flex-col items-center py-10 gap-4">
+                <div className="w-10 h-10 rounded-full border-2 border-blue-400 border-t-transparent animate-spin" />
+                <p className="text-sm text-gray-400">
+                  {vapiStatus === "connecting"
+                    ? "Starting your AI intake agent…"
+                    : "Extracting deviation details from the interview…"}
+                </p>
+              </div>
+            )}
+
+            {/* Active call UI */}
+            {vapiStatus === "active" && (
+              <>
+                {/* Volume bars */}
+                <div className="flex items-end justify-center gap-1 h-10 mb-5">
+                  {Array.from({ length: 9 }).map((_, i) => (
+                    <div key={i} className="w-1.5 rounded-full bg-blue-400 transition-all duration-100"
+                      style={{
+                        height: `${10 + Math.max(0, (vapiVolume - i * 0.1) * 52)}px`,
+                        opacity: vapiVolume > i * 0.1 ? 1 : 0.15,
+                      }} />
+                  ))}
+                </div>
+
+                {/* Live transcript */}
+                <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1 mb-5 scroll-smooth">
+                  {vapiMessages.length === 0 ? (
+                    <div className="text-center text-gray-500 text-sm py-6 italic">
+                      Alex is about to introduce themselves…
+                    </div>
+                  ) : (
+                    vapiMessages.map((msg, i) => (
+                      <div key={i} className={`flex gap-2 text-sm ${msg.role !== "assistant" ? "justify-end" : ""}`}>
+                        {msg.role === "assistant" && (
+                          <div className="w-6 h-6 rounded-full bg-blue-500/80 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">A</div>
+                        )}
+                        <div className={`max-w-[82%] rounded-2xl px-3.5 py-2 leading-snug ${
+                          msg.role === "assistant"
+                            ? "bg-white/8 text-gray-200 rounded-tl-sm"
+                            : "bg-blue-500/25 text-blue-100 rounded-tr-sm"
+                        }`}>
+                          {msg.text}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Hint */}
+                <p className="text-xs text-gray-500 text-center mb-4">
+                  Speak naturally — ask Alex questions, clarify details, or add context at any time.
+                </p>
+
+                {/* End call */}
+                <button onClick={stopVapiCall}
+                  className="w-full py-3 rounded-xl text-sm font-bold bg-red-500/15 border border-red-500/35 text-red-400 hover:bg-red-500/25 transition">
+                  End Interview
+                </button>
+              </>
+            )}
 
           </div>
         </div>
