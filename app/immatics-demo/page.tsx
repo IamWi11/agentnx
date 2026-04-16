@@ -811,7 +811,19 @@ export default function ImmaticsDemo() {
         </div>
       )}
 
-      <footer className="border-t border-white/10 px-8 py-6 text-center text-gray-600 text-sm mt-10">
+      {/* Data handling notice */}
+      <div className="max-w-4xl mx-auto px-6 pb-6">
+        <div className="bg-white/3 border border-white/8 rounded-xl px-5 py-4 text-xs text-gray-500 leading-relaxed">
+          <span className="text-gray-400 font-semibold">Data & Privacy — </span>
+          This is a demonstration environment. No submission data is stored or retained by AgentNX.
+          In production, AgentNX deploys inside your company&apos;s own cloud environment (AWS, Azure, or on-premises).
+          All deviation records, batch data, and patient information remain entirely within your network —
+          AgentNX has zero access to your production data.
+          The agent logic is configured and maintained by AgentNX; the data is yours, in your environment, under your controls.
+        </div>
+      </div>
+
+      <footer className="border-t border-white/10 px-8 py-6 text-center text-gray-600 text-sm">
         © 2026 AgentNX.ai — AI Agents for Pharma Quality Operations
         <span className="mx-3">·</span>
         <span>A product of IMAGE 101 LLC · Service-Disabled Veteran-Owned Small Business</span>
