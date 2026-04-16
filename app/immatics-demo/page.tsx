@@ -61,6 +61,33 @@ const PRODUCTS = [
   "IMA401",
 ];
 
+const GUIDED_QUESTIONS = [
+  {
+    key: "event",
+    label: "What happened?",
+    prompt: "What happened? Describe the deviation event in your own words.",
+    hint: "e.g. The incubator temperature alarm triggered at 2am…",
+  },
+  {
+    key: "when",
+    label: "When was it discovered?",
+    prompt: "When was it discovered? Please state the date and time.",
+    hint: "e.g. April 16th at 02:14…",
+  },
+  {
+    key: "observed",
+    label: "What was observed?",
+    prompt: "What was observed? Include any measurements, readings, or visible signs.",
+    hint: "e.g. Temperature read 33.2 degrees instead of the specified 37 degrees…",
+  },
+  {
+    key: "status",
+    label: "Current batch status?",
+    prompt: "What is the current status of the batch or affected area?",
+    hint: "e.g. Batch is at Day 6 of 14-day expansion, currently quarantined…",
+  },
+];
+
 const CRITICALITY_COLORS: Record<string, string> = {
   Critical: "bg-red-500/20 border-red-500/40 text-red-400",
   Major:    "bg-orange-500/20 border-orange-500/40 text-orange-400",
@@ -74,6 +101,11 @@ export default function ImmaticsDemo() {
   const [result, setResult] = useState<DeviationResult | null>(null);
   const [activeTab, setActiveTab] = useState<"veeva" | "teams" | "email">("veeva");
   const [recordingField, setRecordingField] = useState<"description" | "immediateActions" | null>(null);
+  const [guidedOpen, setGuidedOpen] = useState(false);
+  const [guidedStep, setGuidedStep] = useState(0);
+  const [guidedAnswers, setGuidedAnswers] = useState<Record<string, string>>({});
+  const [guidedListening, setGuidedListening] = useState(false);
+  const [guidedTranscript, setGuidedTranscript] = useState("");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const [form, setForm] = useState({
@@ -134,6 +166,86 @@ export default function ImmaticsDemo() {
     recognitionRef.current = rec;
     rec.start();
     setRecordingField(field);
+  };
+
+  const speakQuestion = (text: string) => {
+    window.speechSynthesis?.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate = 0.95;
+    utt.pitch = 1;
+    window.speechSynthesis?.speak(utt);
+  };
+
+  const startGuidedListening = () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { alert("Voice recording requires Chrome or Safari."); return; }
+    recognitionRef.current?.stop();
+    const rec = new SR();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = "en-US";
+    let final = "";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (event: any) => {
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) final += event.results[i][0].transcript + " ";
+        else interim = event.results[i][0].transcript;
+      }
+      setGuidedTranscript((final + interim).trimStart());
+    };
+    rec.onend = () => setGuidedListening(false);
+    rec.onerror = () => setGuidedListening(false);
+    recognitionRef.current = rec;
+    rec.start();
+    setGuidedListening(true);
+  };
+
+  const openGuidedInterview = () => {
+    recognitionRef.current?.stop();
+    setGuidedAnswers({});
+    setGuidedStep(0);
+    setGuidedTranscript("");
+    setGuidedListening(false);
+    setGuidedOpen(true);
+    setTimeout(() => speakQuestion(GUIDED_QUESTIONS[0].prompt), 400);
+    setTimeout(() => startGuidedListening(), 2200);
+  };
+
+  const guidedNext = () => {
+    window.speechSynthesis?.cancel();
+    recognitionRef.current?.stop();
+    const q = GUIDED_QUESTIONS[guidedStep];
+    const answer = guidedTranscript.trim();
+    const updated = { ...guidedAnswers, [q.key]: answer };
+    setGuidedAnswers(updated);
+    setGuidedTranscript("");
+    setGuidedListening(false);
+
+    if (guidedStep < GUIDED_QUESTIONS.length - 1) {
+      const next = guidedStep + 1;
+      setGuidedStep(next);
+      setTimeout(() => speakQuestion(GUIDED_QUESTIONS[next].prompt), 300);
+      setTimeout(() => startGuidedListening(), 2200);
+    } else {
+      // Compile all answers into structured description
+      const compiled = [
+        updated.event  && `What happened: ${updated.event.trim()}`,
+        updated.when   && `Discovered: ${updated.when.trim()}`,
+        updated.observed && `Observed: ${updated.observed.trim()}`,
+        updated.status && `Current batch status: ${updated.status.trim()}`,
+      ].filter(Boolean).join(" ");
+      setForm(f => ({ ...f, description: compiled }));
+      setGuidedOpen(false);
+    }
+  };
+
+  const closeGuided = () => {
+    window.speechSynthesis?.cancel();
+    recognitionRef.current?.stop();
+    setGuidedOpen(false);
+    setGuidedListening(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -289,15 +401,21 @@ export default function ImmaticsDemo() {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-sm font-semibold text-gray-300">Event Description</label>
-                  <button type="button" onClick={() => startRecording("description")}
-                    className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border transition ${
-                      recordingField === "description"
-                        ? "bg-red-500/20 border-red-500/50 text-red-400 animate-pulse"
-                        : "bg-white/5 border-white/20 text-gray-400 hover:text-white hover:border-white/40"
-                    }`}>
-                    <span>{recordingField === "description" ? "⏹" : "🎙️"}</span>
-                    {recordingField === "description" ? "Stop Recording" : "Voice Record"}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={openGuidedInterview}
+                      className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border border-blue-500/40 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition">
+                      <span>📋</span> Guided Interview
+                    </button>
+                    <button type="button" onClick={() => startRecording("description")}
+                      className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border transition ${
+                        recordingField === "description"
+                          ? "bg-red-500/20 border-red-500/50 text-red-400 animate-pulse"
+                          : "bg-white/5 border-white/20 text-gray-400 hover:text-white hover:border-white/40"
+                      }`}>
+                      <span>{recordingField === "description" ? "⏹" : "🎙️"}</span>
+                      {recordingField === "description" ? "Stop" : "Dictate"}
+                    </button>
+                  </div>
                 </div>
                 <textarea name="description" value={form.description} onChange={handleChange} required rows={5}
                   className={`w-full bg-white/10 border rounded-lg px-4 py-2.5 text-sm focus:outline-none resize-none transition ${
@@ -305,11 +423,11 @@ export default function ImmaticsDemo() {
                       ? "border-red-500/50 focus:border-red-400"
                       : "border-white/20 focus:border-blue-400"
                   }`}
-                  placeholder="Describe what happened, when it was discovered, and what was observed — or click Voice Record to speak it." />
+                  placeholder="Describe what happened, when it was discovered, and what was observed — or use Guided Interview to answer step-by-step." />
                 {recordingField === "description" && (
                   <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
                     <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                    Listening — speak clearly. Click Stop Recording when done.
+                    Listening — speak clearly. Click Stop when done.
                   </p>
                 )}
               </div>
@@ -544,6 +662,94 @@ export default function ImmaticsDemo() {
           </div>
         )}
       </div>
+
+      {/* ── Guided Interview Modal ──────────────────────────────────────────── */}
+      {guidedOpen && (
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center px-4">
+          <div className="bg-[#0f1420] border border-white/15 rounded-2xl p-8 max-w-xl w-full shadow-2xl">
+
+            {/* Header row */}
+            <div className="flex items-center justify-between mb-5">
+              <span className="text-xs font-bold uppercase tracking-widest text-blue-400">
+                Guided Interview — Question {guidedStep + 1} of {GUIDED_QUESTIONS.length}
+              </span>
+              <button onClick={closeGuided}
+                className="text-gray-500 hover:text-white text-sm transition px-2 py-0.5">
+                ✕ Cancel
+              </button>
+            </div>
+
+            {/* Progress bar */}
+            <div className="flex gap-2 mb-6">
+              {GUIDED_QUESTIONS.map((_, i) => (
+                <div key={i} className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+                  i < guidedStep ? "bg-blue-500" : i === guidedStep ? "bg-blue-400 animate-pulse" : "bg-white/10"
+                }`} />
+              ))}
+            </div>
+
+            {/* Question */}
+            <div className="text-xs text-gray-500 uppercase tracking-wider mb-1.5">
+              {GUIDED_QUESTIONS[guidedStep].label}
+            </div>
+            <h3 className="text-xl font-bold text-white mb-1.5 leading-snug">
+              {GUIDED_QUESTIONS[guidedStep].prompt}
+            </h3>
+            <p className="text-xs text-gray-500 italic mb-5">
+              {GUIDED_QUESTIONS[guidedStep].hint}
+            </p>
+
+            {/* Transcript — editable so user can also type */}
+            <textarea
+              value={guidedTranscript}
+              onChange={(e) => setGuidedTranscript(e.target.value)}
+              rows={3}
+              className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-sm transition resize-none focus:outline-none mb-2 ${
+                guidedListening
+                  ? "border-red-500/50 ring-1 ring-red-500/25"
+                  : "border-white/15 focus:border-blue-400"
+              }`}
+              placeholder="Your answer appears here as you speak — or type directly…"
+            />
+
+            {/* Listening status */}
+            <div className="h-5 mb-5 flex items-center gap-2">
+              {guidedListening ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse inline-block" />
+                  <span className="text-xs text-red-400">Listening — speak your answer clearly</span>
+                </>
+              ) : guidedTranscript ? (
+                <span className="text-xs text-gray-500">Edit above or tap Next when ready</span>
+              ) : (
+                <span className="text-xs text-gray-500">Tap Speak to record your answer</span>
+              )}
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={startGuidedListening}
+                disabled={guidedListening}
+                className={`flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold border transition ${
+                  guidedListening
+                    ? "bg-red-500/15 border-red-500/40 text-red-400 cursor-default"
+                    : "bg-white/5 border-white/20 text-gray-300 hover:bg-white/10 hover:border-white/40"
+                }`}>
+                {guidedListening ? "🎙️ Listening…" : "🎙️ Speak"}
+              </button>
+              <button
+                type="button"
+                onClick={guidedNext}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-blue-500 hover:bg-blue-400 text-white transition">
+                {guidedStep < GUIDED_QUESTIONS.length - 1 ? "Next →" : "Done — Save Description ✓"}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       <footer className="border-t border-white/10 px-8 py-6 text-center text-gray-600 text-sm mt-10">
         © 2026 AgentNX.ai — AI Agents for Pharma Quality Operations
