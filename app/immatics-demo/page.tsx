@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 type Step = "form" | "analyzing" | "result";
 
@@ -61,21 +61,8 @@ const PRODUCTS = [
   "IMA401",
 ];
 
-const VAPI_SYSTEM_PROMPT = `You are Alex, a GMP deviation intake agent for immatics — a clinical-stage cell therapy company developing pTCR-T cell therapies for cancer. You assist manufacturing operators in reporting deviation events verbally.
-
-Your job is to have a natural, professional conversation to collect:
-1. What happened (the deviation event itself)
-2. When it was discovered (date and time)
-3. What was observed (measurements, readings, alarms, visible signs)
-4. Current status of the affected batch or area
-
-Be conversational and warm — not robotic or scripted. Ask natural follow-up questions if an answer is vague or missing detail. For example: "Do you know the exact temperature reading at the time?" or "Was the batch quarantined immediately?"
-
-If the operator asks you questions about SOPs, criticality classification, escalation steps, or GMP requirements — answer them helpfully. You are knowledgeable about cell therapy manufacturing, 21 CFR Part 11, GMP deviations, CAPA, and Veeva Vault QMS processes. You can explain concepts like Major vs Critical deviations, when to notify QA, and what documentation is typically required.
-
-When you have collected all four pieces of information, say: "Perfect — I have everything I need. I'll compile this into the deviation record now." Then end the call naturally.
-
-Speak in short, clear sentences — this is a voice call. Avoid bullet points or long paragraphs. Keep a professional but approachable tone.`;
+// Chat-based guided interview — no VAPI dependency
+type ChatMessage = { role: "user" | "assistant"; content: string };
 
 const CRITICALITY_COLORS: Record<string, string> = {
   Critical: "bg-red-500/20 border-red-500/40 text-red-400",
@@ -91,12 +78,13 @@ export default function ImmaticsDemo() {
   const [activeTab, setActiveTab] = useState<"veeva" | "teams" | "email">("veeva");
   const [recordingField, setRecordingField] = useState<"description" | "immediateActions" | null>(null);
   const [guidedOpen, setGuidedOpen] = useState(false);
-  const [vapiStatus, setVapiStatus] = useState<"idle" | "connecting" | "active" | "analyzing">("idle");
-  const [vapiMessages, setVapiMessages] = useState<Array<{role: string; text: string}>>([]);
-  const [vapiVolume, setVapiVolume] = useState(0);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const vapiRef = useRef<any>(null);
-  const vapiMessagesRef = useRef<Array<{role: string; text: string}>>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatListening, setChatListening] = useState(false);
+  const [chatReady, setChatReady] = useState(false); // Alex said "Got it"
+  const chatMessagesRef = useRef<ChatMessage[]>([]);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const [form, setForm] = useState({
@@ -159,79 +147,112 @@ export default function ImmaticsDemo() {
     setRecordingField(field);
   };
 
-  const openGuidedInterview = async () => {
-    vapiMessagesRef.current = [];
-    setVapiMessages([]);
-    setVapiVolume(0);
-    setVapiStatus("connecting");
-    setGuidedOpen(true);
+  const sendChatMessage = async (userText: string) => {
+    if (!userText.trim() || chatLoading) return;
+    const userMsg: ChatMessage = { role: "user", content: userText.trim() };
+    const updated = [...chatMessagesRef.current, userMsg];
+    chatMessagesRef.current = updated;
+    setChatMessages([...updated]);
+    setChatInput("");
+    setChatLoading(true);
+
+    // Placeholder for streaming response
+    const placeholder: ChatMessage = { role: "assistant", content: "" };
+    chatMessagesRef.current = [...updated, placeholder];
+    setChatMessages([...chatMessagesRef.current]);
+
     try {
-      const { default: Vapi } = await import("@vapi-ai/web");
-      const vapi = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY!);
-      vapiRef.current = vapi;
+      const res = await fetch("/api/immatics-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: updated }),
+      });
+      if (!res.ok || !res.body) throw new Error("stream failed");
 
-      vapi.on("call-start", () => setVapiStatus("active"));
-      vapi.on("volume-level", (v: number) => setVapiVolume(v));
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      vapi.on("message", (msg: any) => {
-        if (msg.type === "transcript" && msg.transcriptType === "final") {
-          const entry = { role: msg.role as string, text: msg.transcript as string };
-          vapiMessagesRef.current = [...vapiMessagesRef.current, entry];
-          setVapiMessages([...vapiMessagesRef.current]);
-        }
-      });
-      vapi.on("call-end", async () => {
-        setVapiStatus("analyzing");
-        setVapiVolume(0);
-        const msgs = vapiMessagesRef.current;
-        if (msgs.length > 0) {
-          try {
-            const res = await fetch("/api/immatics-transcript", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ messages: msgs }),
-            });
-            if (res.ok) {
-              const { description } = await res.json();
-              if (description) setForm(f => ({ ...f, description }));
-            }
-          } catch { /* ignore parse errors */ }
-        }
-        setGuidedOpen(false);
-        setVapiStatus("idle");
-        vapiRef.current = null;
-      });
-      vapi.on("error", () => {
-        setVapiStatus("idle");
-        setGuidedOpen(false);
-        vapiRef.current = null;
-      });
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (vapi as any).start({
-        model: {
-          provider: "anthropic",
-          model: "claude-3-5-sonnet-20241022",
-          messages: [{ role: "system", content: VAPI_SYSTEM_PROMPT }],
-        },
-        firstMessage: "Hi, I'm Alex — your deviation intake agent. Tell me, what happened?",
-      });
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let full = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        full += decoder.decode(value, { stream: true });
+        chatMessagesRef.current = [...updated, { role: "assistant", content: full }];
+        setChatMessages([...chatMessagesRef.current]);
+      }
+      // Detect when Alex signals completion
+      if (full.toLowerCase().includes("save to form")) setChatReady(true);
     } catch {
-      setVapiStatus("idle");
-      setGuidedOpen(false);
+      const errMsg: ChatMessage = { role: "assistant", content: "Connection error — please try again." };
+      chatMessagesRef.current = [...updated, errMsg];
+      setChatMessages([...chatMessagesRef.current]);
     }
+    setChatLoading(false);
   };
 
-  const stopVapiCall = () => {
-    vapiRef.current?.stop();
+  const openGuidedInterview = () => {
+    recognitionRef.current?.stop();
+    chatMessagesRef.current = [];
+    setChatMessages([]);
+    setChatInput("");
+    setChatLoading(false);
+    setChatListening(false);
+    setChatReady(false);
+    setGuidedOpen(true);
+    // Kick off Alex's opening line
+    sendChatMessage("__start__");
   };
 
   const closeGuided = () => {
-    vapiRef.current?.stop();
+    recognitionRef.current?.stop();
+    setChatListening(false);
     setGuidedOpen(false);
-    setVapiStatus("idle");
-    vapiRef.current = null;
   };
+
+  const saveChatToForm = async () => {
+    setChatLoading(true);
+    try {
+      const res = await fetch("/api/immatics-transcript", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: chatMessagesRef.current.map(m => ({ role: m.role, text: m.content })) }),
+      });
+      if (res.ok) {
+        const { description } = await res.json();
+        if (description) setForm(f => ({ ...f, description }));
+      }
+    } catch { /* ignore */ }
+    setChatLoading(false);
+    setGuidedOpen(false);
+  };
+
+  const startChatVoice = () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { alert("Voice input requires Chrome or Safari."); return; }
+    if (chatListening) { recognitionRef.current?.stop(); setChatListening(false); return; }
+    recognitionRef.current?.stop();
+    const rec = new SR();
+    rec.lang = "en-US";
+    rec.interimResults = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
+      const text = e.results[0][0].transcript;
+      setChatListening(false);
+      sendChatMessage(text);
+    };
+    rec.onend = () => setChatListening(false);
+    rec.onerror = () => setChatListening(false);
+    recognitionRef.current = rec;
+    rec.start();
+    setChatListening(true);
+  };
+
+  // Auto-scroll chat to bottom
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [chatMessages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -648,92 +669,96 @@ export default function ImmaticsDemo() {
         )}
       </div>
 
-      {/* ── AI Voice Interview Modal ─────────────────────────────────────────── */}
+      {/* ── AI Chat Interview Modal ──────────────────────────────────────────── */}
       {guidedOpen && (
         <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center px-4">
-          <div className="bg-[#0f1420] border border-white/15 rounded-2xl p-7 max-w-lg w-full shadow-2xl">
+          <div className="bg-[#0f1420] border border-white/15 rounded-2xl flex flex-col max-w-lg w-full shadow-2xl"
+            style={{ maxHeight: "88vh" }}>
 
             {/* Header */}
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2.5">
-                <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-                  vapiStatus === "active" ? "bg-green-400 animate-pulse" :
-                  vapiStatus === "connecting" ? "bg-yellow-400 animate-pulse" :
-                  vapiStatus === "analyzing" ? "bg-blue-400 animate-pulse" : "bg-gray-500"
-                }`} />
-                <span className="text-sm font-bold text-white">AI Deviation Intake Agent</span>
-                {vapiStatus === "active" && <span className="text-xs text-green-400 font-semibold">● Live</span>}
-                {vapiStatus === "connecting" && <span className="text-xs text-yellow-400">Connecting…</span>}
-                {vapiStatus === "analyzing" && <span className="text-xs text-blue-400">Compiling report…</span>}
+            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-white/10 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-xs font-bold">A</div>
+                <div>
+                  <div className="text-sm font-bold text-white leading-none">Alex</div>
+                  <div className="text-xs text-gray-500">Deviation Intake Agent</div>
+                </div>
               </div>
               <button onClick={closeGuided}
-                className="text-gray-500 hover:text-white text-lg leading-none transition px-1">
-                ✕
-              </button>
+                className="text-gray-500 hover:text-white transition text-lg leading-none px-1">✕</button>
             </div>
 
-            {/* Connecting / analyzing spinner */}
-            {(vapiStatus === "connecting" || vapiStatus === "analyzing") && (
-              <div className="flex flex-col items-center py-10 gap-4">
-                <div className="w-10 h-10 rounded-full border-2 border-blue-400 border-t-transparent animate-spin" />
-                <p className="text-sm text-gray-400">
-                  {vapiStatus === "connecting"
-                    ? "Starting your AI intake agent…"
-                    : "Extracting deviation details from the interview…"}
-                </p>
+            {/* Chat messages */}
+            <div ref={chatScrollRef}
+              className="flex-1 overflow-y-auto px-5 py-4 space-y-3 min-h-0">
+              {chatMessages
+                .filter(m => m.content && m.content !== "__start__")
+                .map((msg, i) => (
+                  <div key={i} className={`flex gap-2 text-sm ${msg.role === "user" ? "justify-end" : ""}`}>
+                    {msg.role === "assistant" && (
+                      <div className="w-6 h-6 rounded-full bg-blue-500/80 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">A</div>
+                    )}
+                    <div className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 leading-snug text-sm ${
+                      msg.role === "assistant"
+                        ? "bg-white/8 text-gray-200 rounded-tl-sm"
+                        : "bg-blue-500/25 text-blue-100 rounded-tr-sm"
+                    }`}>
+                      {msg.content || <span className="inline-block w-4 h-1 bg-blue-400/60 rounded animate-pulse" />}
+                    </div>
+                  </div>
+                ))}
+              {chatLoading && chatMessages.length === 0 && (
+                <div className="flex gap-2 text-sm">
+                  <div className="w-6 h-6 rounded-full bg-blue-500/80 flex items-center justify-center text-xs font-bold flex-shrink-0">A</div>
+                  <div className="bg-white/8 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
+                    <span className="inline-block w-4 h-1 bg-blue-400/60 rounded animate-pulse" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Save to form CTA — appears when Alex is done */}
+            {chatReady && (
+              <div className="px-5 pb-2">
+                <button onClick={saveChatToForm} disabled={chatLoading}
+                  className="w-full py-2.5 rounded-xl text-sm font-bold bg-green-500/20 border border-green-500/40 text-green-400 hover:bg-green-500/30 transition">
+                  {chatLoading ? "Saving…" : "Save to Form ✓"}
+                </button>
               </div>
             )}
 
-            {/* Active call UI */}
-            {vapiStatus === "active" && (
-              <>
-                {/* Volume bars */}
-                <div className="flex items-end justify-center gap-1 h-10 mb-5">
-                  {Array.from({ length: 9 }).map((_, i) => (
-                    <div key={i} className="w-1.5 rounded-full bg-blue-400 transition-all duration-100"
-                      style={{
-                        height: `${10 + Math.max(0, (vapiVolume - i * 0.1) * 52)}px`,
-                        opacity: vapiVolume > i * 0.1 ? 1 : 0.15,
-                      }} />
-                  ))}
-                </div>
-
-                {/* Live transcript */}
-                <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1 mb-5 scroll-smooth">
-                  {vapiMessages.length === 0 ? (
-                    <div className="text-center text-gray-500 text-sm py-6 italic">
-                      Alex is about to introduce themselves…
-                    </div>
-                  ) : (
-                    vapiMessages.map((msg, i) => (
-                      <div key={i} className={`flex gap-2 text-sm ${msg.role !== "assistant" ? "justify-end" : ""}`}>
-                        {msg.role === "assistant" && (
-                          <div className="w-6 h-6 rounded-full bg-blue-500/80 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">A</div>
-                        )}
-                        <div className={`max-w-[82%] rounded-2xl px-3.5 py-2 leading-snug ${
-                          msg.role === "assistant"
-                            ? "bg-white/8 text-gray-200 rounded-tl-sm"
-                            : "bg-blue-500/25 text-blue-100 rounded-tr-sm"
-                        }`}>
-                          {msg.text}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                {/* Hint */}
-                <p className="text-xs text-gray-500 text-center mb-4">
-                  Speak naturally — ask Alex questions, clarify details, or add context at any time.
-                </p>
-
-                {/* End call */}
-                <button onClick={stopVapiCall}
-                  className="w-full py-3 rounded-xl text-sm font-bold bg-red-500/15 border border-red-500/35 text-red-400 hover:bg-red-500/25 transition">
-                  End Interview
+            {/* Input row */}
+            <div className="px-5 pb-5 pt-2 border-t border-white/10 flex-shrink-0">
+              <div className="flex gap-2">
+                <button onClick={startChatVoice}
+                  className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border transition ${
+                    chatListening
+                      ? "bg-red-500/20 border-red-500/50 text-red-400 animate-pulse"
+                      : "bg-white/5 border-white/15 text-gray-400 hover:text-white hover:border-white/30"
+                  }`}>
+                  {chatListening ? "⏹" : "🎙️"}
                 </button>
-              </>
-            )}
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChatMessage(chatInput); } }}
+                  placeholder={chatListening ? "Listening…" : "Type or speak your answer…"}
+                  disabled={chatLoading || chatListening}
+                  className="flex-1 bg-white/5 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-400 placeholder:text-gray-600 disabled:opacity-50"
+                />
+                <button onClick={() => sendChatMessage(chatInput)} disabled={!chatInput.trim() || chatLoading}
+                  className="flex-shrink-0 w-10 h-10 rounded-xl bg-blue-500 hover:bg-blue-400 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition text-white font-bold text-base">
+                  →
+                </button>
+              </div>
+              {!chatReady && (
+                <button onClick={saveChatToForm} disabled={chatMessages.length < 2 || chatLoading}
+                  className="mt-2 w-full text-xs text-gray-600 hover:text-gray-400 transition disabled:opacity-30 disabled:cursor-not-allowed">
+                  Done talking — save to form
+                </button>
+              )}
+            </div>
 
           </div>
         </div>
