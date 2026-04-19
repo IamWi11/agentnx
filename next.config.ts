@@ -53,7 +53,7 @@ const corsHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["groq-sdk", "resend"],
+  serverExternalPackages: ["groq-sdk", "resend", "@modelcontextprotocol/sdk"],
   async headers() {
     return [
       {
