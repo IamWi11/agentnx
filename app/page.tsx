@@ -142,6 +142,7 @@ export default function Home() {
           <a href="/voice" className="text-gray-400 hover:text-white text-sm transition">{t.nav.voiceAgents}</a>
           <a href="/deviation" className="text-gray-400 hover:text-white text-sm transition">{t.nav.tryDemo}</a>
           <a href="/pricing" className="text-gray-400 hover:text-white text-sm transition">{t.nav.pricing}</a>
+          <a href="/mcp-demo" className="text-gray-400 hover:text-blue-400 text-sm transition">MCP Demo</a>
 
           {/* Language toggle */}
           <motion.button
