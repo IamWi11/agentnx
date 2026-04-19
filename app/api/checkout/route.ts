@@ -17,6 +17,7 @@ function isRateLimited(ip: string): boolean {
 }
 
 const PLANS: Record<string, { priceId: string; name: string }> = {
+  pilot:      { priceId: process.env.STRIPE_PRICE_PILOT!,      name: "Pilot" },
   starter:    { priceId: process.env.STRIPE_PRICE_STARTER!,    name: "Starter" },
   growth:     { priceId: process.env.STRIPE_PRICE_GROWTH!,     name: "Growth" },
   enterprise: { priceId: process.env.STRIPE_PRICE_ENTERPRISE!, name: "Enterprise" },
