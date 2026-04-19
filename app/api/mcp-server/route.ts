@@ -253,8 +253,25 @@ Route this ticket.`
   return s;
 }
 
+// ── Auth check ───────────────────────────────────────────────────────────────
+function unauthorized() {
+  return new Response(
+    JSON.stringify({ error: "Unauthorized — provide a valid AgentNX API key via Authorization: Bearer <key>" }),
+    { status: 401, headers: { "Content-Type": "application/json" } }
+  );
+}
+
+function checkAuth(req: NextRequest): boolean {
+  const validKey = process.env.AGENTNX_MCP_API_KEY;
+  if (!validKey) return true; // no key configured = open (dev mode)
+  const header = req.headers.get("authorization") ?? "";
+  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  return token === validKey;
+}
+
 // ── Route handler ────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+  if (!checkAuth(req)) return unauthorized();
   const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined });
   const server = buildAgentNXServer();
   await server.connect(transport);
@@ -262,6 +279,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  if (!checkAuth(req)) return unauthorized();
   const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined });
   const server = buildAgentNXServer();
   await server.connect(transport);
@@ -269,6 +287,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  if (!checkAuth(req)) return unauthorized();
   const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined });
   const server = buildAgentNXServer();
   await server.connect(transport);
