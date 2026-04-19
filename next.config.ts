@@ -19,7 +19,7 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       // Scripts: self + Vercel analytics/speed insights
-      "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://cdn.vercel-insights.com https://challenges.cloudflare.com https://*.clerk.accounts.dev",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://cdn.vercel-insights.com https://challenges.cloudflare.com https://*.clerk.accounts.dev",
       // Styles: unsafe-inline required for framer-motion and Tailwind
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       // Images: self, data URIs, and any HTTPS source
