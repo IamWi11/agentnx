@@ -19,7 +19,7 @@ const PRESETS = [
 ];
 
 export default function McpDemoPage() {
-  const [serverUrl, setServerUrl] = useState("http://localhost:3333/mcp");
+  const [serverUrl, setServerUrl] = useState("https://agentnx.ai/api/mcp-server");
   const [message, setMessage] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [result, setResult] = useState<{ response?: string; tools?: { name: string; description: string }[]; error?: string } | null>(null);
