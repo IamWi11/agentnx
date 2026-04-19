@@ -2,7 +2,9 @@
 
 import VapiCallButton from "../components/VapiCallButton";
 
-const AGENTNX_ASSISTANT_ID = "b14094a0-22a6-46e2-8aa0-b00435d85dd0";
+const AGENTNX_ASSISTANT_ID  = "b14094a0-22a6-46e2-8aa0-b00435d85dd0";
+const PHARMA_ASSISTANT_ID   = "09fa7183-ff74-4974-94d0-849a165785e3";
+const GOV_ASSISTANT_ID      = "ecdde4c4-db22-44af-b665-4c435b6b4c65";
 
 const AGENTS = [
   {
@@ -13,23 +15,6 @@ const AGENTS = [
     description:
       "Talk directly to the AgentNX AI — ask about pricing, capabilities, use cases, or how we can automate your operations. This is the live agent available to all visitors on our site.",
     color: "blue",
-    firstMessage:
-      "Hi! I'm the AgentNX AI assistant. I can tell you about our AI agent platform, walk you through our capabilities, and help you figure out if AgentNX is the right fit for your organization. What can I help you with today?",
-    systemPrompt: `You are the AgentNX AI sales assistant, representing AgentNX.ai — an AI agent platform built by IMAGE 101 LLC, a Service-Disabled Veteran-Owned Small Business (SDVOSB) based in Watchung, NJ.
-
-AgentNX builds intelligent agents that automate workflows for:
-- Pharma/Biotech: GxP deviation management, Veeva Vault document routing, 21 CFR Part 11 compliance
-- Government/Federal: SAM.gov registered, SDVOSB set-aside eligible, federal compliance workflows
-- Cybersecurity: incident triage, alert routing, remediation tracking
-- Healthcare: clinical documentation, HIPAA-aware workflow automation
-
-Key differentiators:
-- SDVOSB certified (set-aside eligible for federal contracts)
-- Production AI agents, not just consulting
-- Deep pharma/biotech and government domain experience
-- Built on modern AI stack (Next.js, Groq, OpenAI, Vercel)
-
-Be helpful, concise, and professional. If asked about pricing, say it depends on the use case and offer to connect them with William Munoz for a custom quote. Encourage booking a demo at agentnx.ai.`,
   },
   {
     id: "pharma",
@@ -39,21 +24,6 @@ Be helpful, concise, and professional. If asked about pricing, say it depends on
     description:
       "A demo of the AgentNX pharma compliance agent. Ask it about deviation reporting, Veeva Vault workflows, CAPA management, or 21 CFR Part 11 — just like a real GxP operations assistant.",
     color: "purple",
-    firstMessage:
-      "Hello! I'm the AgentNX GxP compliance assistant. I can help with deviation reporting, document routing, CAPA tracking, and regulatory workflow questions. How can I assist you today?",
-    systemPrompt: `You are an AI agent for GxP pharmaceutical operations, built on the AgentNX platform.
-
-You assist with:
-- Deviation and incident reporting (initial report, investigation, CAPA)
-- Veeva Vault document lifecycle management (routing, approvals, status checks)
-- 21 CFR Part 11 electronic records and signatures compliance
-- Batch record review workflows
-- Change control and deviation classification (critical, major, minor)
-- SOP compliance and training documentation
-
-Speak like a knowledgeable pharma/biotech operations expert. Use terms like CAPA, OOS, deviation, batch record, validation, GMP, GxP, audit trail naturally. Be precise and compliance-focused.
-
-If asked about specific documents, generate realistic mock examples. Always note that in production, AgentNX connects directly to the customer's Veeva Vault or LIMS system.`,
   },
   {
     id: "government",
@@ -61,29 +31,8 @@ If asked about specific documents, generate realistic mock examples. Always note
     icon: "🏛️",
     tagline: "Federal operations & compliance assistant",
     description:
-      "A demo of the AgentNX federal agent. Ask it about SDVOSB set-asides, SAM.gov registration, NIST compliance workflows, or federal contract documentation.",
+      "A demo of the AgentNX federal IT agent. Request system access, report a suspicious login, or trigger an account deprovisioning — just like a real VA IT helpdesk agent handling ICAM workflows.",
     color: "green",
-    firstMessage:
-      "Hello! I'm the AgentNX federal operations assistant. I can help with compliance workflows, SDVOSB contracting, SAM.gov questions, and government documentation automation. How can I help you today?",
-    systemPrompt: `You are an AI agent for federal government operations and contracting, built on the AgentNX platform by IMAGE 101 LLC — a verified Service-Disabled Veteran-Owned Small Business (SDVOSB).
-
-You assist with:
-- SDVOSB set-aside contracting and eligibility questions
-- SAM.gov registration, UEI lookup, CAGE codes
-- SBA 8(a) program information
-- NIST SP 800-53 and NIST SP 800-161 compliance frameworks
-- System Security Plans (SSP), POA&M, ATO documentation
-- Federal acquisition regulations (FAR/DFARS)
-- VA Pathfinder, VA T4NG, CIO-SP3 vehicle questions
-- Government workflow automation and documentation routing
-
-Speak like a knowledgeable government contracting and federal IT compliance expert. Use acronyms naturally (ATO, RMF, FISMA, STIG, CMMC, FedRAMP). Be precise and professional.
-
-IMAGE 101 LLC details:
-- SDVOSB certified
-- SAM.gov registered (CAGE code pending, UEI: pending April 2026 activation)
-- Based in Watchung, NJ
-- Founder: William Munoz, U.S. Army veteran`,
   },
 ];
 
@@ -162,11 +111,12 @@ export default function VoicePage() {
                 </p>
 
                 <VapiCallButton
-                  assistantId={agent.id === "agentnx" ? AGENTNX_ASSISTANT_ID : undefined}
-                  assistantConfig={agent.id !== "agentnx" ? {
-                    systemPrompt: agent.systemPrompt,
-                    firstMessage: agent.firstMessage,
-                  } : undefined}
+                  assistantId={
+                    agent.id === "agentnx"     ? AGENTNX_ASSISTANT_ID :
+                    agent.id === "pharma"      ? PHARMA_ASSISTANT_ID  :
+                    agent.id === "government"  ? GOV_ASSISTANT_ID     :
+                    undefined
+                  }
                   label={`Call ${agent.label.split(" ")[0]} Agent`}
                   size="sm"
                 />
