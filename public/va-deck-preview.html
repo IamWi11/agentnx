@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgentNX — VA OI&T Pathfinder S-6804 | IMAGE 101 LLC</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    background: #0a0f1e;
+    color: #e8eaf6;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ─── DECK WRAPPER ─── */
+  .deck {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    padding: 36px 64px 72px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    overflow: hidden;
+  }
+
+  .slide.active {
+    display: flex;
+    opacity: 1;
+  }
+
+  /* ─── SLIDE BACKGROUNDS ─── */
+  .slide-cover { background: linear-gradient(135deg, #0a0f1e 0%, #0d1f3c 50%, #0a2240 100%); }
+  .slide-about { background: linear-gradient(160deg, #0a0f1e 0%, #111827 100%); }
+  .slide-problem { background: linear-gradient(160deg, #0f0a1e 0%, #1a0a2e 100%); }
+  .slide-platform { background: linear-gradient(160deg, #0a0f1e 0%, #0a1f2e 100%); }
+  .slide-usecases { background: linear-gradient(160deg, #0a0f1e 0%, #0d1f1a 100%); }
+  .slide-tech { background: linear-gradient(160deg, #0a0f1e 0%, #0a1a2f 100%); }
+  .slide-compliance { background: linear-gradient(160deg, #0a0f1e 0%, #1a1000 100%); }
+  .slide-demo { background: linear-gradient(160deg, #0a0f1e 0%, #0d1f3c 100%); }
+  .slide-why { background: linear-gradient(160deg, #0a0f1e 0%, #1a0a0a 100%); }
+  .slide-whynow { background: linear-gradient(160deg, #0a0f1e 0%, #0f1a00 100%); }
+  .slide-cta { background: linear-gradient(135deg, #0a0f1e 0%, #0d1f3c 50%, #0a2240 100%); }
+
+  /* ─── HEADER BADGE ─── */
+  .header-badge {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .badge {
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    color: #60a5fa;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 5px 14px;
+    border-radius: 20px;
+  }
+
+  .badge-sdvosb {
+    background: rgba(34, 197, 94, 0.12);
+    border: 1px solid rgba(34, 197, 94, 0.35);
+    color: #4ade80;
+  }
+
+  .badge-cage {
+    background: rgba(168, 85, 247, 0.12);
+    border: 1px solid rgba(168, 85, 247, 0.35);
+    color: #c084fc;
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+
+  /* ─── TYPOGRAPHY ─── */
+  .slide-num {
+    font-size: 11px;
+    color: #4b5563;
+    letter-spacing: 2px;
+    font-weight: 600;
+  }
+
+  h1 {
+    font-size: 56px;
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -1.5px;
+    color: #ffffff;
+  }
+
+  h1 .accent { color: #3b82f6; }
+  h1 .accent-green { color: #4ade80; }
+
+  h2 {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.8px;
+    color: #ffffff;
+    margin-bottom: 6px;
+  }
+
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #3b82f6;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+
+  .subtitle {
+    font-size: 20px;
+    color: #9ca3af;
+    line-height: 1.5;
+    margin-top: 12px;
+  }
+
+  .lead {
+    font-size: 17px;
+    color: #d1d5db;
+    line-height: 1.5;
+    margin-bottom: 18px;
+  }
+
+  p, li {
+    font-size: 16px;
+    color: #9ca3af;
+    line-height: 1.7;
+  }
+
+  /* ─── COVER SLIDE ─── */
+  .cover-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .cover-eyebrow {
+    font-size: 12px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #3b82f6;
+    font-weight: 700;
+    margin-bottom: 20px;
+  }
+
+  .cover-meta {
+    margin-top: 40px;
+    padding-top: 32px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    gap: 40px;
+  }
+
+  .cover-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .cover-meta-label {
+    font-size: 10px;
+    color: #4b5563;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+  }
+
+  .cover-meta-value {
+    font-size: 15px;
+    color: #e5e7eb;
+    font-weight: 500;
+  }
+
+  .cover-logo {
+    font-size: 28px;
+    font-weight: 900;
+    color: #3b82f6;
+    letter-spacing: -1px;
+    margin-bottom: 8px;
+  }
+
+  .cover-logo span { color: #ffffff; }
+
+  /* ─── CARDS ─── */
+  .card-grid {
+    display: grid;
+    gap: 10px;
+    flex: 1;
+  }
+
+  .card-grid-2 { grid-template-columns: 1fr 1fr; }
+  .card-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .card-grid-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+
+  .card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 16px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s ease;
+  }
+
+  .card:hover {
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(255,255,255,0.2);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #3b82f6, transparent);
+  }
+
+  .card.green::before { background: linear-gradient(90deg, #4ade80, transparent); }
+  .card.purple::before { background: linear-gradient(90deg, #c084fc, transparent); }
+  .card.amber::before { background: linear-gradient(90deg, #fbbf24, transparent); }
+  .card.red::before { background: linear-gradient(90deg, #f87171, transparent); }
+  .card.cyan::before { background: linear-gradient(90deg, #22d3ee, transparent); }
+
+  .card-icon {
+    font-size: 22px;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .card h3 { font-size: 16px; margin-bottom: 8px; }
+  .card p { font-size: 14px; line-height: 1.55; }
+
+  /* ─── STAT BLOCKS ─── */
+  .stat-row {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+
+  .stat {
+    flex: 1;
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 12px;
+    padding: 14px 16px;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-size: 28px;
+    font-weight: 800;
+    color: #3b82f6;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+  }
+
+  /* ─── PROBLEM SLIDE ─── */
+  .problem-row {
+    display: flex;
+    gap: 20px;
+    flex: 1;
+  }
+
+  .problem-card {
+    flex: 1;
+    background: rgba(239, 68, 68, 0.06);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 16px;
+    padding: 16px;
+  }
+
+  .problem-card h3 { color: #f87171; }
+  .problem-card p { font-size: 14px; }
+
+  /* ─── USE CASES ─── */
+  .usecase-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    gap: 14px;
+    flex: 1;
+  }
+
+  .usecase {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    padding: 18px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .usecase-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .usecase-tag {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 10px;
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.25);
+  }
+
+  .usecase h3 { font-size: 15px; margin: 0; }
+  .usecase p { font-size: 13px; line-height: 1.5; }
+
+  /* ─── TECH STACK ─── */
+  .tech-layer {
+    display: flex;
+    align-items: center;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 16px 24px;
+    margin-bottom: 12px;
+    gap: 20px;
+  }
+
+  .tech-label {
+    font-size: 10px;
+    color: #3b82f6;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 700;
+    width: 120px;
+    flex-shrink: 0;
+  }
+
+  .tech-items {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .tech-chip {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #d1d5db;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 4px 14px;
+    border-radius: 20px;
+  }
+
+  /* ─── COMPLIANCE ─── */
+  .compliance-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    flex: 1;
+  }
+
+  .comp-card {
+    background: rgba(251, 191, 36, 0.06);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+    border-radius: 14px;
+    padding: 22px;
+  }
+
+  .comp-card h3 { color: #fbbf24; font-size: 15px; }
+  .comp-card p { font-size: 13px; }
+
+  .comp-status {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 10px;
+    display: inline-block;
+    margin-top: 10px;
+  }
+
+  .status-live { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+  .status-ready { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+  .status-path { background: rgba(168,85,247,0.15); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
+
+  /* ─── WHY US ─── */
+  .differentiator-list {
+    list-style: none;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .diff-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 12px 20px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    transition: all 0.2s ease;
+  }
+
+  .diff-item:hover {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(59,130,246,0.3);
+    transform: translateX(6px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  }
+
+  .diff-num {
+    font-size: 24px;
+    font-weight: 900;
+    color: rgba(59, 130, 246, 0.3);
+    line-height: 1;
+    flex-shrink: 0;
+    width: 38px;
+  }
+
+  .diff-content h3 { font-size: 16px; color: #e5e7eb; margin-bottom: 4px; }
+  .diff-content p { font-size: 14px; }
+
+  /* ─── CTA SLIDE ─── */
+  .cta-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .cta-info-row {
+    display: flex;
+    gap: 16px;
+    margin-top: 48px;
+    flex-wrap: wrap;
+  }
+
+  .cta-info-block {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 18px 24px;
+    min-width: 180px;
+  }
+
+  .cta-info-label {
+    font-size: 10px;
+    color: #4b5563;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .cta-info-value {
+    font-size: 15px;
+    color: #e5e7eb;
+    font-weight: 600;
+  }
+
+  .cta-disclaimer {
+    margin-top: 32px;
+    font-size: 11px;
+    color: #374151;
+    line-height: 1.6;
+    max-width: 600px;
+  }
+
+  /* ─── PROGRESS / NAV ─── */
+  .nav-bar {
+    position: fixed;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(10,15,30,0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 40px;
+    padding: 7px 16px;
+    z-index: 100;
+  }
+
+  .nav-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .nav-dot.active {
+    background: #3b82f6;
+    width: 24px;
+    border-radius: 4px;
+  }
+
+  .nav-btn {
+    background: none;
+    border: none;
+    color: #6b7280;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: color 0.2s;
+    line-height: 1;
+  }
+
+  .nav-btn:hover { color: #e5e7eb; }
+
+  .slide-counter {
+    font-size: 11px;
+    color: #4b5563;
+    font-weight: 600;
+    letter-spacing: 1px;
+    min-width: 40px;
+    text-align: center;
+  }
+
+  /* ─── DECORATIVE ─── */
+  .glow {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+    opacity: 0.12;
+  }
+
+  .glow-blue { background: #3b82f6; }
+  .glow-purple { background: #8b5cf6; }
+  .glow-green { background: #10b981; }
+
+  /* ─── VA AUDIENCE PILL ─── */
+  .audience-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    margin-bottom: 28px;
+  }
+
+  .audience-pill {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #9ca3af;
+  }
+
+  /* ─── DIVIDER ─── */
+  .divider {
+    width: 40px;
+    height: 3px;
+    background: #3b82f6;
+    border-radius: 2px;
+    margin: 10px 0 14px;
+  }
+
+  /* Fullscreen hint */
+  .fs-hint {
+    position: fixed;
+    top: 10px;
+    right: 14px;
+    font-size: 10px;
+    color: #4b5563;
+    background: rgba(0,0,0,0.5);
+    padding: 4px 10px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+  }
+
+  /* ─── TECH SLIDE OVERRIDES ─── */
+  .slide-tech .tech-layer { padding: 10px 18px; margin-bottom: 7px; }
+  .slide-tech .tech-chip { font-size: 12px; padding: 3px 11px; }
+
+  /* ─── DENSE SLIDE OVERRIDES (fit content in viewport) ─── */
+  .slide-usecases .header-badge { margin-bottom: 10px; }
+  .slide-usecases .usecase { padding: 10px 14px; }
+  .slide-usecases .usecase h3 { font-size: 13px; }
+  .slide-usecases .usecase p { font-size: 12px; }
+
+  .slide-compliance .header-badge { margin-bottom: 10px; }
+  .slide-compliance .compliance-grid { gap: 10px; }
+  .slide-compliance .comp-card { padding: 14px 16px; }
+  .slide-compliance .comp-card > span:first-child { font-size: 22px !important; margin-bottom: 6px !important; }
+  .slide-compliance .comp-card h3 { font-size: 13px; }
+  .slide-compliance .comp-card p { font-size: 12px; }
+  .slide-compliance .comp-status { margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<div class="fs-hint">Press F to fullscreen · ← → to navigate</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SLIDE 1 — COVER
+═══════════════════════════════════════════════════ -->
+<div class="deck">
+
+<div class="slide slide-cover active" data-slide="1">
+  <div class="glow glow-blue" style="width:500px;height:500px;right:-100px;top:-100px;"></div>
+  <div class="glow glow-purple" style="width:300px;height:300px;left:200px;bottom:0;"></div>
+
+  <div class="cover-content">
+    <div class="cover-eyebrow">VA OI&T Pathfinder — Solicitation S-6804</div>
+    <div class="cover-logo">Agent<span>NX</span></div>
+    <h1><span class="accent">AI Agents</span> for<br>Federal IT Operations</h1>
+    <p class="subtitle" style="margin-top:16px;max-width:580px;">
+      Intelligent automation for service desk, cybersecurity triage, data access, and ICAM workflows — purpose-built for VA IT environments.
+    </p>
+    <div class="cover-meta">
+      <div class="cover-meta-item">
+        <div class="cover-meta-label">Company</div>
+        <div class="cover-meta-value">IMAGE 101 LLC</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="cover-meta-label">Platform</div>
+        <div class="cover-meta-value">AgentNX.ai</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="cover-meta-label">UEI</div>
+        <div class="cover-meta-value">WW9HD15FW7E7</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="cover-meta-label">CAGE</div>
+        <div class="cover-meta-value">1J436</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="cover-meta-label">Status</div>
+        <div class="cover-meta-value" style="color:#4ade80;">SDVOSB — SAM Active ✓</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SLIDE 2 — ABOUT US
+═══════════════════════════════════════════════════ -->
+<div class="slide slide-about" data-slide="2">
+  <div class="header-badge">
+    <span class="badge">Company Overview</span>
+    <div style="display:flex;gap:8px;">
+      <span class="badge badge-sdvosb">SDVOSB Veteran-Owned</span>
+      <span class="badge badge-cage">CAGE 1J436</span>
+    </div>
+  </div>
+
+  <h2>IMAGE 101 LLC / AgentNX</h2>
+  <div class="divider"></div>
+
+  <div class="stat-row">
+    <div class="stat">
+      <div class="stat-num">50%</div>
+      <div class="stat-label">VA Disability Rating</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">USMC</div>
+      <div class="stat-label">Service Branch</div>
+    </div>
+    <div class="stat" style="background:rgba(34,197,94,0.08);border-color:rgba(34,197,94,0.25);">
+      <div class="stat-num" style="color:#4ade80;">SAM ✓</div>
+      <div class="stat-label">SAM.gov Active · All Awards</div>
+    </div>
+    <div class="stat" style="background:rgba(168,85,247,0.08);border-color:rgba(168,85,247,0.25);">
+      <div class="stat-num" style="color:#c084fc;">NJ LLC</div>
+      <div class="stat-label">Formed 2019 · EIN 84-3047928</div>
+    </div>
+  </div>
+
+  <div class="card-grid card-grid-2" style="flex:unset;margin-top:8px;">
+    <div class="card green">
+      <span class="card-icon">🎖️</span>
+      <h3>Service-Disabled Veteran</h3>
+      <p>William Munoz — US Marine Corps veteran, 50% service-connected disability rating. IMAGE 101 LLC is SDVOSB eligible under Veterans First contracting.</p>
+    </div>
+    <div class="card">
+      <span class="card-icon">🤖</span>
+      <h3>AgentNX Platform</h3>
+      <p>AI agent platform deployed on agentnx.ai — voice agents and workflow automation for government IT, pharma ops, and cybersecurity teams.</p>
+    </div>
+    <div class="card purple">
+      <span class="card-icon">📍</span>
+      <h3>Watchung, NJ — NAICS 541511</h3>
+      <p>Custom Computer Programming Services. Also registered under 541512, 541519, and DJ10 (Security Software as a Service).</p>
+    </div>
+    <div class="card amber">
+      <span class="card-icon">⚡</span>
+      <h3>Small Business — Fast-Deployable</h3>
+      <p>No bureaucratic overhead. Capabilities can be scoped, prototyped, and piloted in weeks — not months. Direct access to the developer-founder.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SLIDE 3 — THE PROBLEM
+═══════════════════════════════════════════════════ -->
+<div class="slide slide-problem" data-slide="3">
+  <div class="glow glow-purple" style="width:400px;height:400px;right:0;bottom:0;opacity:0.1;"></div>
+
+  <div class="header-badge">
+    <span class="badge">The Problem</span>
+  </div>
+
+  <h2>VA IT Is Buried in Manual Work</h2>
+  <p class="lead">Large-scale IT operations at VA OI&T face compounding inefficiencies that stretch staff thin and delay resolution times.</p>
+
+  <div class="problem-row">
+    <div class="problem-card">
+      <span style="font-size:32px;display:block;margin-bottom:12px;">📞</span>
+      <h3>Tier 1 Help Desk Saturation</h3>
+      <p>Thousands of repetitive service desk tickets — password resets, access requests, VPN issues — consume analyst time better spent on complex incidents. Mean time to resolve stretches hours to days.</p>
+    </div>
+    <div class="problem-card">
+      <span style="font-size:32px;display:block;margin-bottom:12px;">🚨</span>
+      <h3>Alert Fatigue in Cybersecurity</h3>
+      <p>Security teams receive hundreds of alerts daily across SIEM, endpoint, and network tools. Triage is manual. False positives erode analyst confidence and let real threats slip through queues.</p>
+    </div>
+    <div class="problem-card">
+      <span style="font-size:32px;display:block;margin-bottom:12px;">🔐</span>
+      <h3>ICAM Workflows Are Slow</h3>
+      <p>Privileged access requests, provisioning, and deprovisioning require manual coordination across systems. Delays create productivity gaps and compliance risk.</p>
+    </div>
+    <div class="problem-card">
+      <span style="font-size:32px;display:block;margin-bottom:12px;">📊</span>
+      <h3>Data Access Requires Analysts</h3>
+      <p>Business users need reports and dashboards but require data team intervention for every query. Self-service data access is limited, creating bottlenecks and delayed decisions.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SLIDE 4 — WHY NOW
+═══════════════════════════════════════════════════ -->
+<div class="slide slide-whynow" data-slide="4">
+  <div class="glow glow-green" style="width:400px;height:400px;right:0;top:0;opacity:0.08;"></div>
+
+  <div class="header-badge">
+    <span class="badge" style="background:rgba(251,191,36,0.12);border-color:rgba(251,191,36,0.35);color:#fbbf24;">Market Intelligence</span>
+  </div>
+
+  <h2>The Urgency Is Now</h2>
+  <div class="divider" style="background:#fbbf24;"></div>
+
+  <div class="stat-row" style="margin-bottom:24px;">
+    <div class="stat" style="background:rgba(239,68,68,0.08);border-color:rgba(239,68,68,0.3);">
+      <div class="stat-num" style="color:#f87171;">1,200</div>
+      <div class="stat-label">VA IT Staff Gone — 2025</div>
+    </div>
+    <div class="stat" style="background:rgba(239,68,68,0.08);border-color:rgba(239,68,68,0.3);">
+      <div class="stat-num" style="color:#f87171;">12%</div>
+      <div class="stat-label">OI&T Workforce Reduction</div>
+    </div>
+    <div class="stat" style="background:rgba(251,191,36,0.08);border-color:rgba(251,191,36,0.25);">
+      <div class="stat-num" style="color:#fbbf24;">$7.3B</div>
+      <div class="stat-label">VA IT Budget FY2026</div>
+    </div>
+    <div class="stat" style="background:rgba(251,191,36,0.08);border-color:rgba(251,191,36,0.25);">
+      <div class="stat-num" style="color:#fbbf24;">$90M</div>
+      <div class="stat-label">Active ServiceNow ITSM Contract</div>
+    </div>
+  </div>
+
+  <div class="card-grid card-grid-2" style="flex:unset;">
+    <div class="card amber">
+      <span class="card-icon">📉</span>
+      <h3>Same Ticket Volume. 12% Fewer People.</h3>
+      <p>Nearly 1,200 VA OI&T employees accepted voluntary separations in 2025. The workload didn't shrink with the headcount. Tier 1 help desk, alert triage, and access requests now land on a smaller team — with no budget for backfill. Automation is the only option that doesn't require a new headcount request.</p>
+    </div>
+    <div class="card green">
+      <span class="card-icon">🔗</span>
+      <h3>AgentNX Extends Your Existing $90M Investment</h3>
+      <p>VA already runs ServiceNow ITSM (managed by Booz Allen Hamilton). AgentNX doesn't replace it — we sit on top. Voice agents answer the phone, triage inbound issues, and push structured tickets into ServiceNow automatically. Your existing platform does more with the staff you have left.</p>
+    </div>
+  </div>
+
+  <div style="background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.2);border-radius:14px;padding:18px 28px;margin-top:16px;display:flex;align-items:center;gap:20px;">
+    <span style="font-size:28px;">💡</span>
+    <div>
+      <div style="font-size:15px;font-weight:700;color:#e5e7eb;margin-bottom:4px;">The Business Case Writes Itself</div>
+      <div style="font-size:14px;color:#6b7280;">An 8-week AgentNX pilot on Tier 1 help desk automation — estimated 40–60% ticket deflection — pays for itself in recovered analyst hours before the pilot ends. No new headcount. No new platform contract.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SLIDE 5 — THE PLATFORM
+═══════════════════════════════════════════════════ -->
+<div class="slide slide-platform" data-slide="5">
+  <div class="header-badge">
+    <span class="badge">The Platform</span>
+  </div>
+
+  <h2>AgentNX — What We Built</h2>
+  <p class="lead">A modular AI agent platform that deploys intelligent, voice-capable agents into existing workflows — no rip-and-replace required.</p>
+
+  <div class="card-grid card-grid-3">
+    <div class="card">
+      <span class="card-icon">🧠</span>
+      <h3>Conversational AI Agents</h3>
+      <p>Natural language interfaces for staff to query systems, submit requests, and get answers — text or voice. Agents act, not just respond.</p>
+    </div>
+    <div class="card green">
+      <span class="card-icon">🎙️</span>
+      <h3>Live Voice Agents</h3>
+      <p>Real-time voice AI via VAPI — agents can handle inbound calls, route tickets, and walk users through resolution steps over the phone.</p>
+    </div>
+    <div class="card purple">
+      <span class="card-icon">🔗</span>
+      <h3>System Integration</h3>
+      <p>Connects to existing ticketing, SIEM, ITSM, and directory systems via REST APIs. Reads, writes, and takes action inside your tools.</p>
+    </div>
+    <div class="card amber">
+      <span class="card-icon">📋</span>
+      <h3>Workflow Automation</h3>
+      <p>Multi-step agentic workflows — triage → classify → route → escalate — without human handoffs on routine items.</p>
+    </div>
+    <div class="card cyan">
+      <span class="card-icon">🛡️</span>
+      <h3>Compliance-Ready Design</h3>
+      <p>Built with NIST 800-53 controls in mind. Audit logging, RBAC, and data handling designed for federal environments.</p>
+    </div>
+    <div class="card red">
+      <span class="card-icon">🚀</span>
+      <h3>Fast Deployment</h3>
+      <p>Pilot in 2–4 weeks. No long implementation cycles. Start narrow (one use case, one team) and expand from proven ROI.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SLIDE 5 — VA USE CASES
+═══════════════════════════════════════════════════ -->
+<div class="slide slide-usecases" data-slide="6" style="padding-top:20px;padding-bottom:80px;">
+  <div class="header-badge">
+    <span class="badge">VA IT Use Cases</span>
+  </div>
+
+  <h2 style="margin-bottom:4px;">Capabilities Mapped to VA OI&T</h2>
+
+  <div class="audience-row" style="margin-top:6px;margin-bottom:10px;">
+    <span class="audience-pill">Cybersecurity</span>
+    <span class="audience-pill">Infrastructure / CCS</span>
+    <span class="audience-pill">Data</span>
+    <span class="audience-pill">ICAM</span>
+    <span class="audience-pill">CTO / PMO</span>
+    <span class="audience-pill">EUO</span>
+    <span class="audience-pill">SNO</span>
+    <span class="audience-pill">TAC</span>
+  </div>
+
+  <div class="usecase-grid" style="gap:8px;grid-template-rows:auto auto auto;">
+    <div class="usecase">
+      <div class="usecase-top">
+        <span style="font-size:20px;">📞</span>
+        <span class="usecase-tag" style="background:rgba(34,197,94,0.12);color:#4ade80;border-color:rgba(34,197,94,0.25);">Infrastructure / EUO</span>
+      </div>
+      <h3>Tier 1 Help Desk Agent</h3>
+      <p>Voice + text agent handles password resets, VPN troubleshooting, and common IT requests autonomously — escalates only when needed. Reduces ticket volume 40–60%.</p>
+    </div>
+    <div class="usecase">
+      <div class="usecase-top">
+        <span style="font-size:20px;">🚨</span>
+        <span class="usecase-tag" style="background:rgba(239,68,68,0.12);color:#f87171;border-color:rgba(239,68,68,0.25);">Cybersecurity</span>
+      </div>
+      <h3>Security Alert Triage Agent</h3>
+      <p>Ingests SIEM alerts, cross-references threat intel, classifies severity, and routes true positives to analysts — suppresses false positives automatically.</p>
+    </div>
+    <div class="usecase">
+      <div class="usecase-top">
+        <span style="font-size:20px;">🔐</span>
+        <span class="usecase-tag" style="background:rgba(168,85,247,0.12);color:#c084fc;border-color:rgba(168,85,247,0.25);">ICAM</span>
+      </div>
+      <h3>Access Request Automation</h3>
+      <p>Users request system access via natural language. Agent verifies role entitlements, checks policy, routes for approval, and logs the decision chain for audit.</p>
+    </div>
+    <div class="usecase">
+      <div class="usecase-top">
+        <span style="font-size:20px;">📊</span>
+        <span class="usecase-tag" style="background:rgba(59,130,246,0.12);color:#60a5fa;border-color:rgba(59,130,246,0.25);">Data</span>
+      </div>
+      <h3>Natural Language Data Queries</h3>
+      <p>Staff ask data questions in plain English — agent queries approved data sources, returns answers, and flags when data access requires additional authorization.</p>
+    </div>
+    <div class="usecase">
+      <div class="usecase-top">
+        <span style="font-size:20px;">🌐</span>
+        <span class="usecase-tag" style="background:rgba(34,197,94,0.12);color:#4ade80;border-color:rgba(34,197,94,0.25);">SNO / Network</span>
+      </div>
+      <h3>Network Incident Intake</h3>
+      <p>Voice agent accepts inbound network issue reports, gathers structured incident data, creates tickets in the ITSM system, and provides ticket IDs and ETAs to callers.</p>
+    </div>
+    <div class="usecase">
+      <div class="usecase-top">
+        <span style="font-size:20px;">📋</span>
+        <span class="usecase-tag" style="background:rgba(251,191,36,0.12);color:#fbbf24;border-color:rgba(251,191,36,0.25);">CTO / PMO</span>
+      </div>
+      <h3>Project Status Briefing Agent</h3>
+      <p>Queries project management systems and returns structured status summaries on demand — reduces prep time for leadership briefings and sprint reviews.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SLIDE 6 — TECHNICAL ARCHITECTURE
+═══════════════════════════════════════════════════ -->
+<div class="slide slide-tech" data-slide="7" style="padding-top:20px;padding-bottom:80px;">
+  <div class="header-badge" style="margin-bottom:10px;">
+    <span class="badge">Technical Architecture</span>
+  </div>
+
+  <h2 style="margin-bottom:4px;">How It's Built</h2>
+  <p style="color:#6b7280;margin-bottom:10px;font-size:14px;">Modular, API-first architecture. No monolithic vendor lock-in. Each layer is swappable.</p>
+
+  <div class="tech-layer" style="border-color:rgba(34,197,94,0.25);">
+    <div class="tech-label" style="color:#4ade80;">Voice Layer</div>
+    <div class="tech-items">
+      <span class="tech-chip">VAPI Voice AI</span>
+      <span class="tech-chip">Real-time transcription</span>
+      <span class="tech-chip">Twilio / SIP compatible</span>
+      <span class="tech-chip">WebSocket streaming</span>
+    </div>
+  </div>
+
+  <div class="tech-layer" style="border-color:rgba(59,130,246,0.25);">
+    <div class="tech-label" style="color:#60a5fa;">Agent Logic</div>
+    <div class="tech-items">
+      <span class="tech-chip">Claude (Anthropic)</span>
+      <span class="tech-chip">Tool-use / function calling</span>
+      <span class="tech-chip">Agentic loop</span>
+      <span class="tech-chip">Multi-step workflows</span>
+    </div>
+  </div>
+
+  <div class="tech-layer" style="border-color:rgba(168,85,247,0.25);">
+    <div class="tech-label" style="color:#c084fc;">Application</div>
+    <div class="tech-items">
+      <span class="tech-chip">Next.js 16</span>
+      <span class="tech-chip">Vercel Edge</span>
+      <span class="tech-chip">REST API layer</span>
+      <span class="tech-chip">TypeScript</span>
+    </div>
+  </div>
+
+  <div class="tech-layer" style="border-color:rgba(251,191,36,0.25);">
+    <div class="tech-label" style="color:#fbbf24;">Integration</div>
+    <div class="tech-items">
+      <span class="tech-chip">ServiceNow</span>
+      <span class="tech-chip">Active Directory / LDAP</span>
+      <span class="tech-chip">SIEM via webhook</span>
+      <span class="tech-chip">REST / GraphQL</span>
+    </div>
+  </div>
+
+  <!-- MCP two-direction callout -->
+  <div style="background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.25);border-radius:12px;padding:10px 14px;margin-top:6px;">
+    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#60a5fa;margin-bottom:8px;">🔌 Model Context Protocol (MCP) — Built-In Interoperability</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div style="background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.2);border-radius:8px;padding:8px 12px;">
+        <div style="font-size:10px;font-weight:700;color:#4ade80;margin-bottom:4px;">PHASE 1 — PILOT (NOW)</div>
+        <div style="font-size:11px;color:#9ca3af;margin-bottom:6px;">VA staff use AgentNX at agentnx.ai — web interface, nothing to install, zero VA infrastructure changes.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">
+          <span style="font-size:9px;font-family:monospace;background:rgba(0,0,0,0.3);color:#4ade80;padding:2px 6px;border-radius:4px;">triage_alert()</span>
+          <span style="font-size:9px;font-family:monospace;background:rgba(0,0,0,0.3);color:#4ade80;padding:2px 6px;border-radius:4px;">handle_access_request()</span>
+          <span style="font-size:9px;font-family:monospace;background:rgba(0,0,0,0.3);color:#4ade80;padding:2px 6px;border-radius:4px;">handle_helpdesk_request()</span>
+          <span style="font-size:9px;font-family:monospace;background:rgba(0,0,0,0.3);color:#4ade80;padding:2px 6px;border-radius:4px;">route_ticket()</span>
+        </div>
+      </div>
+      <div style="background:rgba(168,85,247,0.07);border:1px solid rgba(168,85,247,0.2);border-radius:8px;padding:8px 12px;">
+        <div style="font-size:10px;font-weight:700;color:#c084fc;margin-bottom:4px;">PHASE 2 — FUTURE-PROOF</div>
+        <div style="font-size:11px;color:#9ca3af;margin-bottom:6px;">When VA adopts any MCP-compatible AI — Microsoft Copilot, approved Claude, or any future platform — AgentNX tools connect instantly. No custom integration.</div>
+        <div style="font-size:10px;color:#4b5563;margin-top:6px;">Open standard · No vendor lock-in · Code already built</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SLIDE 7 — COMPLIANCE POSTURE
+═══════════════════════════════════════════════════ -->
+<div class="slide slide-compliance" data-slide="8" style="padding-top:20px;padding-bottom:80px;">
+  <div class="header-badge">
+    <span class="badge">Compliance Posture</span>
+  </div>
+
+  <h2 style="margin-bottom:4px;">Federal Compliance Readiness</h2>
+  <p class="lead" style="margin-bottom:12px;">Documentation submitted to VA IT VMO Apr 17, 2026. Built for the path to ATO.</p>
+
+  <div class="compliance-grid">
+    <div class="comp-card">
+      <span style="font-size:28px;display:block;margin-bottom:10px;">📑</span>
+      <h3>NIST SP 800-53</h3>
+      <p>Security and Privacy Controls for Federal Systems. Controls mapped to AgentNX architecture — AC, AU, IA, SC, SI families addressed in submitted SSP.</p>
+      <span class="comp-status status-live">SSP Submitted Apr 17</span>
+    </div>
+    <div class="comp-card">
+      <span style="font-size:28px;display:block;margin-bottom:10px;">🔏</span>
+      <h3>SSDF (NIST SP 800-218)</h3>
+      <p>Secure Software Development Framework. Supply chain security practices, code review, dependency management, and vulnerability disclosure process documented.</p>
+      <span class="comp-status status-live">Submitted Apr 17</span>
+    </div>
+    <div class="comp-card">
+      <span style="font-size:28px;display:block;margin-bottom:10px;">☁️</span>
+      <h3>FedRAMP Path</h3>
+      <p>Current deployment on Vercel (SOC 2 Type II). FedRAMP Tailored (LI-SaaS) is the target authorization level. No sensitive data processed at pilot stage.</p>
+      <span class="comp-status status-path">Tailored LI-SaaS Target</span>
+    </div>
+    <div class="comp-card">
+      <span style="font-size:28px;display:block;margin-bottom:10px;">🔍</span>
+      <h3>Audit & Logging</h3>
+      <p>Every agent action, tool call, and decision is logged with timestamps, user context, and outcome. Immutable audit trail supports FISMA AU controls.</p>
+      <span class="comp-status status-ready">AU-2 / AU-12 Aligned</span>
+    </div>
+    <div class="comp-card">
+      <span style="font-size:28px;display:block;margin-bottom:10px;">🛡️</span>
+      <h3>Data Handling</h3>
+      <p>No VA data stored in LLM context beyond session. All prompts sanitized. PII exclusion enforced at the API boundary. Data residency configurable.</p>
+      <span class="comp-status status-ready">SC-28 / SI-12 Aligned</span>
+    </div>
+    <div class="comp-card">
+      <span style="font-size:28px;display:block;margin-bottom:10px;">♿</span>
+      <h3>Section 508</h3>
+      <p>Voice interface inherently accessible. Text interface built with WCAG 2.1 AA targets. Screen reader compatible, keyboard navigable.</p>
+      <span class="comp-status status-path">In Progress</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SLIDE 8 — LIVE DEMO
+═══════════════════════════════════════════════════ -->
+<div class="slide slide-demo" data-slide="9" style="padding-bottom:80px;">
+  <div class="glow glow-blue" style="width:600px;height:600px;left:-100px;top:-100px;"></div>
+
+  <div class="header-badge">
+    <span class="badge">Live Demo</span>
+  </div>
+
+  <h2 style="margin-bottom:4px;">See It In Action</h2>
+
+  <p class="lead" style="max-width:680px;margin-bottom:8px;margin-top:4px;">AgentNX is live at <strong style="color:#3b82f6;">agentnx.ai</strong> — fully deployed, not a mockup. Four production voice agents available for demonstration.</p>
+
+  <div class="card-grid card-grid-4" style="margin-top:8px;gap:8px;flex:none;">
+    <div class="card" style="cursor:pointer;">
+      <span class="card-icon">🏛️</span>
+      <h3>Government / Federal Agent</h3>
+      <p>ICAM access requests, security alerts, account deprovisioning — VA IT helpdesk workflows.</p>
+      <div style="margin-top:12px;font-size:11px;color:#3b82f6;font-weight:700;letter-spacing:1px;">agentnx.ai/voice →</div>
+    </div>
+    <div class="card green">
+      <span class="card-icon">🧬</span>
+      <h3>Pharma / GxP Agent</h3>
+      <p>Demonstrates GxP workflow intake — deviation reporting, CAPA triggers, regulatory Q&A.</p>
+      <div style="margin-top:12px;font-size:11px;color:#4ade80;font-weight:700;letter-spacing:1px;">agentnx.ai/voice →</div>
+    </div>
+    <div class="card purple">
+      <span class="card-icon">📞</span>
+      <h3>Sales / Inquiry Agent</h3>
+      <p>Full inbound call handling — qualifies leads, captures requirements, schedules follow-up.</p>
+      <div style="margin-top:12px;font-size:11px;color:#c084fc;font-weight:700;letter-spacing:1px;">agentnx.ai/voice →</div>
+    </div>
+    <div class="card" style="cursor:pointer;border-color:rgba(20,184,166,0.25);background:rgba(20,184,166,0.05);">
+      <span class="card-icon">🏥</span>
+      <h3>Healthcare Scheduling Agent</h3>
+      <p>Appointment scheduling, urgent triage, insurance intake — clinic and hospital front desk automation.</p>
+      <div style="margin-top:12px;font-size:11px;color:#2dd4bf;font-weight:700;letter-spacing:1px;">agentnx.ai/voice →</div>
+    </div>
+  </div>
+
+  <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:14px;padding:12px 20px;margin-top:10px;display:flex;align-items:center;gap:16px;">
+    <span style="font-size:22px;">🎙️</span>
+    <div>
+      <div style="font-size:13px;font-weight:700;color:#e5e7eb;margin-bottom:2px;">VA IT Help Desk Prototype Available</div>
+      <div style="font-size:12px;color:#6b7280;">A purpose-built VA Tier 1 agent demo can be provisioned for the May 12 meeting — using VA-relevant scenarios (PIV, VPN, access requests). Request 48 hours in advance.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SLIDE 9 — ROI / SAVINGS
+═══════════════════════════════════════════════════ -->
+<div class="slide slide-whynow" data-slide="10">
+  <div class="header-badge">
+    <span class="badge" style="background:rgba(34,197,94,0.12);border-color:rgba(34,197,94,0.35);color:#4ade80;">Return on Investment</span>
+  </div>
+
+  <h2>What VA Saves With AgentNX</h2>
+  <div style="font-size:14px;color:#4b5563;margin-bottom:20px;">Conservative estimates based on federal IT labor rates and industry-standard AI automation benchmarks. Assumptions shown.</div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px;">
+
+    <div style="background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.2);border-radius:16px;padding:22px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#4ade80;margin-bottom:10px;">Use Case 1</div>
+      <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:6px;">Tier 1 Help Desk</div>
+      <div style="font-size:32px;font-weight:900;color:#4ade80;line-height:1;margin-bottom:4px;">$840K</div>
+      <div style="font-size:11px;color:#4b5563;margin-bottom:12px;">estimated annual savings</div>
+      <div style="font-size:12px;color:#6b7280;line-height:1.6;">
+        12,000 tickets/mo × 40% AI deflection = <strong style="color:#9ca3af;">4,800 tickets resolved autonomously</strong><br><br>
+        4,800 × 15 min avg × $58/hr federal analyst rate = <strong style="color:#4ade80;">$70K/mo → $840K/yr</strong><br><br>
+        <span style="color:#4b5563;">Assumes: GS-9 step 5 fully-loaded rate (2026), 15-min avg handle time, 40% deflection rate</span>
+      </div>
+    </div>
+
+    <div style="background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);border-radius:16px;padding:22px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#f87171;margin-bottom:10px;">Use Case 2</div>
+      <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:6px;">Security Alert Triage</div>
+      <div style="font-size:32px;font-weight:900;color:#f87171;line-height:1;margin-bottom:4px;">$1.1M</div>
+      <div style="font-size:11px;color:#4b5563;margin-bottom:12px;">estimated annual savings</div>
+      <div style="font-size:12px;color:#6b7280;line-height:1.6;">
+        30 SOC analysts × 2 hrs/day saved on false positive triage = <strong style="color:#9ca3af;">60 analyst-hours/day recovered</strong><br><br>
+        60 hrs × $75/hr × 250 work days = <strong style="color:#f87171;">$1.125M/yr in recovered capacity</strong><br><br>
+        <span style="color:#4b5563;">Assumes: GS-12 step 1 SOC analyst, 60% false-positive suppression rate, 30-analyst team</span>
+      </div>
+    </div>
+
+    <div style="background:rgba(168,85,247,0.07);border:1px solid rgba(168,85,247,0.2);border-radius:16px;padding:22px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#c084fc;margin-bottom:10px;">Use Case 3</div>
+      <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:6px;">ICAM Access Requests</div>
+      <div style="font-size:32px;font-weight:900;color:#c084fc;line-height:1;margin-bottom:4px;">$418K</div>
+      <div style="font-size:11px;color:#4b5563;margin-bottom:12px;">estimated annual savings</div>
+      <div style="font-size:12px;color:#6b7280;line-height:1.6;">
+        500 access requests/mo × 60% automated = <strong style="color:#9ca3af;">300 requests processed without analyst</strong><br><br>
+        300 × 2 hrs avg × $58/hr × 12 months = <strong style="color:#c084fc;">$418K/yr saved</strong><br><br>
+        <span style="color:#4b5563;">Assumes: GS-9 step 5 identity analyst, 2-hr avg processing time (includes security review, approval routing, LDAP provisioning, audit doc), 60% automation rate</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:18px 28px;display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <div style="font-size:12px;color:#4b5563;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Combined Annual Savings (all 3 use cases)</div>
+      <div style="font-size:36px;font-weight:900;color:#4ade80;line-height:1;">$2.38M / year</div>
+      <div style="font-size:13px;color:#4b5563;margin-top:4px;">Conservative estimate · GS pay scale rates · Industry-standard automation benchmarks</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:12px;color:#4b5563;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">8-Week Pilot Cost</div>
+      <div style="font-size:36px;font-weight:900;color:#fbbf24;line-height:1;">~$250K</div>
+      <div style="font-size:13px;color:#4b5563;margin-top:4px;">Recovers its own cost in <strong style="color:#4ade80;">13 days</strong> of operation at scale</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SLIDE 10 — WHY AGENTNX / WHY NOW
+═══════════════════════════════════════════════════ -->
+<div class="slide slide-why" data-slide="11">
+  <div class="header-badge">
+    <span class="badge">Why AgentNX</span>
+  </div>
+
+  <h2>Why IMAGE 101 / AgentNX</h2>
+
+  <ul class="differentiator-list">
+    <li class="diff-item">
+      <div class="diff-num">01</div>
+      <div class="diff-content">
+        <h3>Veterans First — SDVOSB Set-Aside Eligible</h3>
+        <p>Service-disabled veteran-owned. Eligible for sole-source awards up to $4M under Veterans First contracting. No competition required for qualifying requirements.</p>
+      </div>
+    </li>
+    <li class="diff-item">
+      <div class="diff-num">02</div>
+      <div class="diff-content">
+        <h3>Live Platform — Not a Concept</h3>
+        <p>AgentNX is deployed and running today at agentnx.ai. Voice agents active. The technology works. Pilot can begin in weeks.</p>
+      </div>
+    </li>
+    <li class="diff-item">
+      <div class="diff-num">03</div>
+      <div class="diff-content">
+        <h3>Compliance Documentation Already Submitted</h3>
+        <p>NIST 800-53 controls, SSDF practices, and System Security Plan submitted to VA IT VMO on Apr 17, 2026. We came prepared.</p>
+      </div>
+    </li>
+    <li class="diff-item">
+      <div class="diff-num">04</div>
+      <div class="diff-content">
+        <h3>Small Business Agility</h3>
+        <p>Direct access to the founder-developer. No proposal-to-delivery gap. Custom workflows can be scoped, built, and demonstrated in 2–4 weeks — not quarters.</p>
+      </div>
+    </li>
+    <li class="diff-item">
+      <div class="diff-num">05</div>
+      <div class="diff-content">
+        <h3>Zero Legacy Dependency</h3>
+        <p>AgentNX integrates with existing tools via APIs. No rip-and-replace. Add AI agent capabilities on top of ServiceNow, Active Directory, SIEM — whatever VA already runs.</p>
+      </div>
+    </li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SLIDE 10 — CALL TO ACTION
+═══════════════════════════════════════════════════ -->
+<div class="slide slide-cta" data-slide="12">
+  <div class="glow glow-blue" style="width:600px;height:600px;right:-100px;bottom:-100px;"></div>
+  <div class="glow glow-green" style="width:300px;height:300px;left:100px;top:100px;"></div>
+
+  <div class="header-badge">
+    <span class="badge">Next Steps</span>
+    <span class="badge badge-sdvosb">Market Research — S-6804</span>
+  </div>
+
+  <div class="cta-content">
+    <div class="cover-eyebrow">What We're Asking For</div>
+    <h1 style="font-size:46px;">Let's Identify<br>One <span class="accent">Pilot Use Case</span></h1>
+    <p class="subtitle" style="max-width:600px;">
+      We're not here to sell a large contract. We're here to understand which VA IT pain point — Tier 1 desk, alert triage, ICAM, data access — would benefit most from an 8-week AI agent pilot.
+    </p>
+
+    <div class="cta-info-row">
+      <div class="cta-info-block">
+        <div class="cta-info-label">Company</div>
+        <div class="cta-info-value">IMAGE 101 LLC</div>
+      </div>
+      <div class="cta-info-block">
+        <div class="cta-info-label">Email</div>
+        <div class="cta-info-value">william@image101llc.com</div>
+      </div>
+      <div class="cta-info-block">
+        <div class="cta-info-label">Platform</div>
+        <div class="cta-info-value">agentnx.ai</div>
+      </div>
+      <div class="cta-info-block">
+        <div class="cta-info-label">Phone</div>
+        <div class="cta-info-value">609-401-0595</div>
+      </div>
+      <div class="cta-info-block" style="background:rgba(34,197,94,0.08);border-color:rgba(34,197,94,0.25);">
+        <div class="cta-info-label" style="color:#166534;">SAM / SDVOSB</div>
+        <div class="cta-info-value" style="color:#4ade80;">ACTIVE · UEI WW9HD15FW7E7</div>
+      </div>
+    </div>
+
+    <div class="cta-disclaimer">
+      This presentation was submitted in response to VA OI&T Pathfinder Solicitation S-6804. This is a market research engagement only. IMAGE 101 LLC does not anticipate, and the Government is not obligated to, issue a solicitation or make an award as a result of this engagement.
+    </div>
+  </div>
+</div>
+
+</div><!-- /.deck -->
+
+<!-- ─── NAV BAR ─── -->
+<div class="nav-bar">
+  <button class="nav-btn" id="prevBtn" onclick="navigate(-1)">‹</button>
+  <div id="dots"></div>
+  <span class="slide-counter" id="counter">1 / 10</span>
+  <button class="nav-btn" id="nextBtn" onclick="navigate(1)">›</button>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const dotsContainer = document.getElementById('dots');
+  const counter = document.getElementById('counter');
+  let current = 0;
+  const total = slides.length; // 12 slides
+
+  // Build dots
+  slides.forEach((_, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+    dot.onclick = () => goTo(i);
+    dotsContainer.appendChild(dot);
+  });
+
+  function goTo(n) {
+    slides[current].classList.remove('active');
+    dotsContainer.children[current].classList.remove('active');
+    current = Math.max(0, Math.min(total - 1, n));
+    slides[current].classList.add('active');
+    dotsContainer.children[current].classList.add('active');
+    counter.textContent = (current + 1) + ' / ' + total;
+  }
+
+  function navigate(dir) { goTo(current + dir); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); navigate(1); }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); navigate(-1); }
+    if (e.key === 'f' || e.key === 'F') {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
+    }
+    if (e.key === 'Home') goTo(0);
+    if (e.key === 'End') goTo(total - 1);
+  });
+
+  // Touch swipe
+  let touchX = 0;
+  document.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; });
+  document.addEventListener('touchend', e => {
+    const dx = touchX - e.changedTouches[0].clientX;
+    if (Math.abs(dx) > 50) navigate(dx > 0 ? 1 : -1);
+  });
+</script>
+</body>
+</html>
