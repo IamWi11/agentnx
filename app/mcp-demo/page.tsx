@@ -20,6 +20,7 @@ const PRESETS = [
 
 export default function McpDemoPage() {
   const [serverUrl, setServerUrl] = useState("https://agentnx.ai/api/mcp-server");
+  const [apiKey, setApiKey] = useState("");
   const [message, setMessage] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [result, setResult] = useState<{ response?: string; tools?: { name: string; description: string }[]; error?: string } | null>(null);
@@ -33,7 +34,7 @@ export default function McpDemoPage() {
       const res = await fetch("/api/mcp-agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ serverUrl, message, systemPrompt: systemPrompt || undefined }),
+        body: JSON.stringify({ serverUrl, apiKey: apiKey || undefined, message, systemPrompt: systemPrompt || undefined }),
       });
       const data = await res.json();
       setResult(data);
@@ -49,7 +50,9 @@ export default function McpDemoPage() {
     setLoading(true);
     setResult(null);
     try {
-      const res = await fetch(`/api/mcp-agent?serverUrl=${encodeURIComponent(serverUrl)}`);
+      const params = new URLSearchParams({ serverUrl });
+      if (apiKey) params.set("apiKey", apiKey);
+      const res = await fetch(`/api/mcp-agent?${params}`);
       const data = await res.json();
       setResult({ tools: data.tools });
     } catch (e) {
@@ -81,12 +84,24 @@ export default function McpDemoPage() {
         </div>
 
         {/* Server URL */}
-        <div className="mb-4">
+        <div className="mb-3">
           <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">MCP Server URL</label>
           <input
             value={serverUrl}
             onChange={e => setServerUrl(e.target.value)}
-            placeholder="http://localhost:3333/mcp"
+            placeholder="https://agentnx.ai/api/mcp-server"
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm font-mono text-gray-200 focus:outline-none focus:border-blue-500 transition"
+          />
+        </div>
+
+        {/* API Key */}
+        <div className="mb-4">
+          <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">API Key</label>
+          <input
+            type="password"
+            value={apiKey}
+            onChange={e => setApiKey(e.target.value)}
+            placeholder="Bearer token — required for agentnx.ai/api/mcp-server"
             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm font-mono text-gray-200 focus:outline-none focus:border-blue-500 transition"
           />
         </div>
