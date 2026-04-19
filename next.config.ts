@@ -27,7 +27,7 @@ const securityHeaders = [
       // Fonts: self and Google Fonts CDN
       "font-src 'self' https://fonts.gstatic.com",
       // API connections: self + VAPI + Vercel telemetry + Stripe + Cloudflare Turnstile
-      "connect-src 'self' https://api.vapi.ai wss://*.vapi.ai https://vitals.vercel-insights.com https://va.vercel-scripts.com https://api.stripe.com https://challenges.cloudflare.com",
+      "connect-src 'self' https://api.vapi.ai wss://*.vapi.ai https://*.daily.co wss://*.daily.co https://vitals.vercel-insights.com https://va.vercel-scripts.com https://api.stripe.com https://challenges.cloudflare.com",
       // Media (microphone access for VAPI voice)
       "media-src 'self' blob:",
       // Cloudflare Turnstile iframe
