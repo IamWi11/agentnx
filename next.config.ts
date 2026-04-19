@@ -10,7 +10,7 @@ const securityHeaders = [
   // Only send origin in referrer header for cross-origin requests
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   // Disable browser features not needed by this site
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
+  { key: "Permissions-Policy", value: "camera=(), geolocation=(), interest-cohort=()" },
   // Legacy XSS filter for older browsers
   { key: "X-XSS-Protection", value: "1; mode=block" },
   // Content Security Policy
@@ -19,7 +19,7 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       // Scripts: self + Vercel analytics/speed insights
-      "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://cdn.vercel-insights.com https://challenges.cloudflare.com",
+      "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://cdn.vercel-insights.com https://challenges.cloudflare.com https://*.clerk.accounts.dev",
       // Styles: unsafe-inline required for framer-motion and Tailwind
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       // Images: self, data URIs, and any HTTPS source
