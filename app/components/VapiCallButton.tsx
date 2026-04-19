@@ -25,6 +25,7 @@ export default function VapiCallButton({
 }: VapiCallButtonProps) {
   const [status, setStatus] = useState<CallStatus>("idle");
   const [volume, setVolume] = useState(0);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const vapiRef = useRef<any>(null);
 
   useEffect(() => {
@@ -49,7 +50,11 @@ export default function VapiCallButton({
         vapiRef.current = null;
       });
       vapi.on("volume-level", (v: number) => setVolume(v));
-      vapi.on("error", () => setStatus("idle"));
+      vapi.on("error", (e: unknown) => {
+        console.error("[VAPI error]", e);
+        setStatus("idle");
+        setErrorMsg(e instanceof Error ? e.message : JSON.stringify(e));
+      });
 
       if (assistantId) {
         await vapi.start(assistantId);
@@ -64,8 +69,10 @@ export default function VapiCallButton({
           firstMessage: assistantConfig.firstMessage,
         } as any);
       }
-    } catch {
+    } catch (e: unknown) {
+      console.error("[VAPI catch]", e);
       setStatus("idle");
+      setErrorMsg(e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -162,6 +169,9 @@ export default function VapiCallButton({
           ))}
           <span className="text-xs text-gray-400 ml-2">Live</span>
         </div>
+      )}
+      {errorMsg && (
+        <p className="text-xs text-red-400 max-w-xs text-center">{errorMsg}</p>
       )}
     </div>
   );
