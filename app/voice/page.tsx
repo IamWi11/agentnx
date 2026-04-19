@@ -2,9 +2,10 @@
 
 import VapiCallButton from "../components/VapiCallButton";
 
-const AGENTNX_ASSISTANT_ID  = "b14094a0-22a6-46e2-8aa0-b00435d85dd0";
-const PHARMA_ASSISTANT_ID   = "09fa7183-ff74-4974-94d0-849a165785e3";
-const GOV_ASSISTANT_ID      = "ecdde4c4-db22-44af-b665-4c435b6b4c65";
+const AGENTNX_ASSISTANT_ID   = "b14094a0-22a6-46e2-8aa0-b00435d85dd0";
+const PHARMA_ASSISTANT_ID    = "09fa7183-ff74-4974-94d0-849a165785e3";
+const GOV_ASSISTANT_ID       = "ecdde4c4-db22-44af-b665-4c435b6b4c65";
+const HEALTHCARE_ASSISTANT_ID = "e360cdf7-2323-46a8-890c-b04d1306eb44";
 
 const AGENTS = [
   {
@@ -34,6 +35,15 @@ const AGENTS = [
       "A demo of the AgentNX federal IT agent. Request system access, report a suspicious login, or trigger an account deprovisioning — just like a real VA IT helpdesk agent handling ICAM workflows.",
     color: "green",
   },
+  {
+    id: "healthcare",
+    label: "Healthcare Scheduling Agent",
+    icon: "🏥",
+    tagline: "Appointment scheduling & patient intake",
+    description:
+      "A demo of the AgentNX healthcare agent. Schedule, reschedule, or cancel appointments, handle urgent vs. routine triage, and manage insurance questions — just like a live clinic scheduling desk.",
+    color: "teal",
+  },
 ];
 
 const COLOR_STYLES: Record<string, { border: string; badge: string; icon: string }> = {
@@ -51,6 +61,11 @@ const COLOR_STYLES: Record<string, { border: string; badge: string; icon: string
     border: "border-green-500/30 hover:border-green-500/60",
     badge: "bg-green-500/10 border-green-500/30 text-green-400",
     icon: "bg-green-500/10",
+  },
+  teal: {
+    border: "border-teal-500/30 hover:border-teal-500/60",
+    badge: "bg-teal-500/10 border-teal-500/30 text-teal-400",
+    icon: "bg-teal-500/10",
   },
 };
 
@@ -86,7 +101,7 @@ export default function VoicePage() {
         </div>
 
         {/* Agent Cards */}
-        <div className="grid md:grid-cols-3 gap-6 mb-14">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-14">
           {AGENTS.map((agent) => {
             const styles = COLOR_STYLES[agent.color];
             return (
@@ -112,9 +127,10 @@ export default function VoicePage() {
 
                 <VapiCallButton
                   assistantId={
-                    agent.id === "agentnx"     ? AGENTNX_ASSISTANT_ID :
-                    agent.id === "pharma"      ? PHARMA_ASSISTANT_ID  :
-                    agent.id === "government"  ? GOV_ASSISTANT_ID     :
+                    agent.id === "agentnx"     ? AGENTNX_ASSISTANT_ID    :
+                    agent.id === "pharma"      ? PHARMA_ASSISTANT_ID     :
+                    agent.id === "government"  ? GOV_ASSISTANT_ID        :
+                    agent.id === "healthcare"  ? HEALTHCARE_ASSISTANT_ID :
                     undefined
                   }
                   label={`Call ${agent.label.split(" ")[0]} Agent`}
