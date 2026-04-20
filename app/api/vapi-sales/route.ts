@@ -3,8 +3,6 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 const PLANS: Record<string, { priceId: string; name: string; price: string }> = {
   pilot:      { priceId: process.env.STRIPE_PRICE_PILOT!,      name: "Pilot",      price: "$499/mo" },
   starter:    { priceId: process.env.STRIPE_PRICE_STARTER!,    name: "Starter",    price: "$999/mo" },
@@ -44,6 +42,7 @@ async function createCheckoutUrl(plan: string, email: string): Promise<string> {
 }
 
 async function sendPaymentEmail(email: string, plan: string, checkoutUrl: string) {
+  const resend = new Resend(process.env.RESEND_API_KEY);
   const planData = PLANS[plan] ?? PLANS.pilot;
   await resend.emails.send({
     from: "AgentNX <william@agentnx.ai>",
