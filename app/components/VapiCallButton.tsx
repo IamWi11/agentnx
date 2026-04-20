@@ -8,6 +8,8 @@ type CallStatus = "idle" | "connecting" | "active" | "ending";
 interface AssistantConfig {
   systemPrompt: string;
   firstMessage: string;
+  voice?: { provider: string; voiceId: string; model?: string };
+  model?: { provider: string; model: string };
 }
 
 interface VapiCallButtonProps {
@@ -152,12 +154,15 @@ export default function VapiCallButton({
       if (assistantId) {
         await vapi.start(assistantId);
       } else if (assistantConfig) {
+        const modelCfg = assistantConfig.model ?? { provider: "anthropic", model: "claude-sonnet-4-20250514" };
+        const voiceCfg = assistantConfig.voice ?? { provider: "openai", voiceId: "nova", model: "tts-1" };
         await vapi.start({
           model: {
-            provider: "anthropic",
-            model: "claude-3-5-sonnet-20241022",
+            provider: modelCfg.provider,
+            model: modelCfg.model,
             messages: [{ role: "system", content: assistantConfig.systemPrompt }],
           },
+          voice: voiceCfg,
           firstMessage: assistantConfig.firstMessage,
         } as any);
       }

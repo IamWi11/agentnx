@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import VapiCallButton from "@/app/components/VapiCallButton";
 
 type Step = "form" | "analyzing" | "result";
 
@@ -75,6 +76,8 @@ export default function ImmaticsDemo() {
   const [analysisStep, setAnalysisStep] = useState(0);
   const [result, setResult] = useState<DeviationResult | null>(null);
   const [activeTab, setActiveTab] = useState<"veeva" | "teams" | "email">("veeva");
+  const [approved, setApproved] = useState(false);
+  const [approvedAt, setApprovedAt] = useState("");
   const [recordingField, setRecordingField] = useState<"description" | "immediateActions" | null>(null);
   const [guidedOpen, setGuidedOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -354,29 +357,93 @@ export default function ImmaticsDemo() {
         </div>
 
         {/* Workflow diagram */}
-        <div className="flex items-center gap-2 mb-10 overflow-x-auto pb-2">
+        <div className="flex items-center gap-2 mb-10 overflow-x-auto pt-2 pb-2">
           {[
             { label: "Event Occurs", icon: "⚡" },
             { label: "Agent Classifies", icon: "🤖" },
             { label: "Veeva Created", icon: "📋" },
             { label: "Owner Assigned", icon: "👤" },
-            { label: "Notified", icon: "🔔" },
-          ].map((s, i) => (
-            <div key={s.label} className="flex items-center gap-2 flex-shrink-0">
-              <div className="flex flex-col items-center">
-                <div className="w-10 h-10 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-lg">
-                  {s.icon}
+            { label: "QU Reviews", icon: "✅" },
+          ].map((s, i) => {
+            const done = step === "result";
+            const active = step === "analyzing" && i === Math.min(Math.floor(analysisStep / 2.5), 4);
+            return (
+              <div key={s.label} className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex flex-col items-center">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg border transition-all duration-500 ${
+                    done ? "bg-blue-500 border-blue-400 shadow-lg shadow-blue-500/30" :
+                    active ? "bg-blue-500/30 border-blue-400 animate-pulse" :
+                    "bg-blue-500/10 border-blue-500/30"
+                  }`}>
+                    {done ? "✓" : s.icon}
+                  </div>
+                  <span className={`text-xs mt-1 text-center whitespace-nowrap transition-colors ${done ? "text-blue-300" : "text-gray-400"}`}>{s.label}</span>
                 </div>
-                <span className="text-xs text-gray-400 mt-1 text-center whitespace-nowrap">{s.label}</span>
+                {i < 4 && <div className={`text-xl mb-4 transition-colors ${done ? "text-blue-400" : "text-blue-400/30"}`}>→</div>}
               </div>
-              {i < 4 && <div className="text-blue-400/40 text-xl mb-4">→</div>}
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* STEP 1: FORM */}
         {step === "form" && (
           <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
+            {/* ── Live Demo with Alex ─────────────────────────────────── */}
+            <div className="mb-8 rounded-xl border border-blue-500/30 bg-blue-500/5 px-6 py-5">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                    <span className="text-xs font-semibold text-blue-400 uppercase tracking-widest">Live Demo Mode</span>
+                  </div>
+                  <p className="text-sm text-white font-semibold">Talk to Alex — the AgentNX Pharma AI</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Alex will narrate the full workflow live, walk through the deviation process, and answer any questions from your team.
+                  </p>
+                </div>
+                <VapiCallButton
+                  label="🎙️ Start Live Demo"
+                  size="md"
+                  assistantConfig={{
+                    firstMessage: "Hi, I'm Alex — AgentNX's pharmaceutical deviation workflow agent. I'm going to walk you through exactly how I handle a real deviation event at immatics, step by step. I'll show you how I apply your Decision Tree, pre-populate the Veeva record, enforce the human approval gate, and dispatch notifications — all in real time. Ready to see it live?",
+                    voice: { provider: "openai", voiceId: "nova", model: "tts-1" },
+                    model: { provider: "anthropic", model: "claude-sonnet-4-20250514" },
+                    systemPrompt: `You are Alex, the AgentNX pharmaceutical deviation workflow agent, conducting a live product demonstration for the immatics Quality Operations team — specifically for Ryan Garrick-Horton (Cell Therapy OQA) and Sameer (QA Director). This is a Wednesday April 22, 2026 vendor evaluation call via Microsoft Teams.
+
+YOUR ROLE IN THIS DEMO:
+You are narrating and explaining the AgentNX deviation workflow agent to a QA audience. You are the agent BEING demonstrated. Speak naturally and confidently — not as a salesperson, but as the AI agent itself showing what you can do.
+
+DEMO SCRIPT (follow this flow):
+1. INTRO: Introduce yourself and explain what you do — you replace the Deviations-US email chain with an AI front gate that applies the Decision Tree, pre-populates Veeva, and enforces the HITL approval gate.
+2. FORM: Tell them to click "Load Example Event →" to see a realistic anzu-cel incubator excursion from Cell Therapy Suite B, Batch IMA203-2026-047.
+3. SUBMIT: Tell them to click "Submit to Agent — Apply Decision Tree →" to watch you work.
+4. ANALYSIS: Explain you're applying SOP-QA-001 in real time — checking criticality, root cause, patient safety impact, assigning owner and OQA approver, pre-populating the Veeva record.
+5. RESULT: Explain the result — Critical Deviation Confirmed. Walk through the amber HITL banner. Emphasize: you cannot activate the Veeva record or send a single notification until OQA approves. This is system-enforced, not policy.
+6. APPROVE: Tell them to click Approve and watch the Veeva record activate, the Part 11 audit trail log, and the Teams + Outlook notifications dispatch.
+7. VEEVA TAB: Walk through the pre-populated Veeva record fields.
+8. Q&A: Transition to open Q&A — you can answer anything about the platform, compliance, integration, pricing, or the pilot proposal.
+
+KEY FACTS YOU KNOW:
+- You enforce 21 CFR Part 11, HIPAA, GAMP 5 Category 4 (IQ/OQ/PQ complete)
+- The Purolea FDA Warning Letter: Purolea let AI act autonomously without human review — AgentNX cannot. You are the exact opposite: nothing moves without OQA approval.
+- Veeva integration: REST API v24.1, POST /api/v24.1/vobjects/deviation__v — all fields auto-populated
+- Microsoft Teams: Azure Bot Framework, direct link to Vault record
+- Outlook/Email: Microsoft Graph API, OQA approver confirmation
+- Deployment: Inside immatics' own AWS or Azure VPC — data never leaves their environment
+- HITL enforcement: 21 CFR 211.22(c) — Quality Unit must review and approve
+- Pilot: 60-day, Week 1-2 config, Week 3-4 UAT, Week 5-8 parallel run, Day 60 go/no-go, no lock-in
+- Pricing: discussed after call based on scope
+- immatics products: anzu-cel (IMA203), IMA203CD8, IMA402, IMA401
+- immatics sites: Houston TX, Tübingen Germany, Munich Germany
+- AgentNX is built by IMAGE 101 LLC — Service-Disabled Veteran-Owned Small Business (SDVOSB)
+- William Munoz: founder, 609-401-0595, william@agentnx.ai
+
+TONE: Confident, knowledgeable, direct. You are a GMP-trained AI agent — not a chatbot. Keep responses under 3 sentences unless answering a specific compliance question that needs detail. Never be salesy — let the capability speak for itself.`,
+                  }}
+                />
+              </div>
+            </div>
+
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold">Event Report — Notifying Department</h2>
               <button
@@ -501,9 +568,24 @@ export default function ImmaticsDemo() {
         {/* STEP 2: ANALYZING */}
         {step === "analyzing" && (
           <div className="bg-white/5 border border-white/10 rounded-2xl p-10 text-center">
-            <div className="text-5xl mb-6 animate-pulse">🤖</div>
+            <div className="relative w-16 h-16 mx-auto mb-6">
+              <div className="absolute inset-0 rounded-full border-2 border-blue-500/30" />
+              <div className="absolute inset-0 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+              <div className="absolute inset-0 flex items-center justify-center text-2xl">🤖</div>
+            </div>
             <h2 className="text-2xl font-bold mb-2">Agent Working</h2>
-            <p className="text-gray-400 mb-8 text-sm">Applying Deviation Decision Tree and GMP SOPs...</p>
+            <p className="text-gray-400 mb-4 text-sm">Applying Deviation Decision Tree and GMP SOPs...</p>
+
+            {/* Progress bar */}
+            <div className="max-w-md mx-auto mb-8">
+              <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.round((analysisStep / ANALYSIS_STEPS.length) * 100)}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-2">{Math.round((analysisStep / ANALYSIS_STEPS.length) * 100)}% complete</p>
+            </div>
 
             <div className="max-w-md mx-auto space-y-3 text-left">
               {ANALYSIS_STEPS.map((s, i) => (
@@ -553,6 +635,76 @@ export default function ImmaticsDemo() {
               )}
             </div>
 
+            {/* HITL Gate */}
+            {!approved ? (
+              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl mt-0.5">⏳</span>
+                  <div>
+                    <div className="text-sm font-bold text-amber-300">Pending Human Review — Action Required</div>
+                    <div className="text-xs text-amber-200/70 mt-0.5">
+                      The agent has classified and pre-populated the record. <strong className="text-amber-200">No action is taken until {result.oqaApprover} approves.</strong> This is enforced by the system — the agent cannot proceed autonomously.
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => {
+                      const now = new Date();
+                      setApprovedAt(now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }));
+                      setApproved(true);
+                      setActiveTab("veeva");
+                    }}
+                    className="px-4 py-2 rounded-lg bg-green-500/20 border border-green-500/40 text-green-400 text-xs font-bold hover:bg-green-500/30 transition whitespace-nowrap">
+                    ✓ Approve
+                  </button>
+                  <button
+                    onClick={() => setApproved(false)}
+                    className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-gray-300 text-xs font-bold hover:bg-white/20 transition whitespace-nowrap">
+                    ↩ Request Changes
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-green-500/30 bg-green-500/10 p-5 space-y-4">
+                {/* Approved header */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl mt-0.5">✅</span>
+                    <div>
+                      <div className="text-sm font-bold text-green-300">Approved by {result.oqaApprover}</div>
+                      <div className="text-xs text-green-200/70 mt-0.5">
+                        Approved at {approvedAt} · Veeva Vault record activated · Notifications dispatched
+                      </div>
+                    </div>
+                  </div>
+                  <span className="flex-shrink-0 text-xs bg-green-500/20 border border-green-500/40 text-green-400 px-3 py-1 rounded-full font-bold">
+                    {result.deviationId} · Active
+                  </span>
+                </div>
+
+                {/* What was dispatched */}
+                <div className="grid sm:grid-cols-3 gap-3 pt-1">
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                    <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">📋 Veeva Vault</div>
+                    <div className="text-xs text-gray-300">Record status set to <strong className="text-green-400">Active</strong>. Investigation phase initiated. Due date set per SLA.</div>
+                  </div>
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                    <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">💬 Teams</div>
+                    <div className="text-xs text-gray-300">Owner <strong className="text-white">{result.ownerName}</strong> notified. Investigation task assigned with {result.criticality === "Critical" ? "24-hr" : "72-hr"} response window.</div>
+                  </div>
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                    <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">📧 Outlook</div>
+                    <div className="text-xs text-gray-300">Approval confirmation sent to <strong className="text-white">{result.department}</strong> and logged in the 21 CFR Part 11 audit trail.</div>
+                  </div>
+                </div>
+
+                <div className="text-xs text-green-400/60 pt-1">
+                  ✓ Full audit trail recorded — approver identity, timestamp, and decision logged per 21 CFR Part 11
+                </div>
+              </div>
+            )}
+
             {/* Tabs */}
             <div className="flex gap-2 border-b border-white/10 pb-0">
               {(["veeva", "teams", "email"] as const).map((tab) => (
@@ -582,7 +734,7 @@ export default function ImmaticsDemo() {
                 <div className="grid md:grid-cols-2 gap-4">
                   {[
                     { label: "Deviation ID", value: result.deviationId, highlight: true },
-                    { label: "Status", value: result.status },
+                    { label: "Status", value: approved ? "Active — Investigation In Progress" : result.status },
                     { label: "Title", value: result.deviationTitle, full: true },
                     { label: "Criticality", value: result.criticality },
                     { label: "Root Cause Category", value: result.rootCauseCategory },
@@ -682,7 +834,7 @@ export default function ImmaticsDemo() {
                   className="bg-blue-500 hover:bg-blue-400 text-white font-semibold px-6 py-2.5 rounded-full text-sm transition">
                   Start the Pilot →
                 </a>
-                <button onClick={() => { setStep("form"); setResult(null); setRecordingField(null); recognitionRef.current?.stop(); setForm({ description: "", department: "Cell Therapy Manufacturing", product: "", batchNumber: "", location: "Suite 100 — Cell Therapy Suite A", immediateActions: "" }); }}
+                <button onClick={() => { setStep("form"); setResult(null); setApproved(false); setApprovedAt(""); setRecordingField(null); recognitionRef.current?.stop(); setForm({ description: "", department: "Cell Therapy Manufacturing", product: "", batchNumber: "", location: "Suite 100 — Cell Therapy Suite A", immediateActions: "" }); }}
                   className="bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-2.5 rounded-full text-sm transition">
                   Run Another Event
                 </button>
