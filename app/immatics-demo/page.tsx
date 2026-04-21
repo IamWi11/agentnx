@@ -834,6 +834,10 @@ TONE: Confident, knowledgeable, direct. You are a GMP-trained AI agent — not a
                   className="bg-blue-500 hover:bg-blue-400 text-white font-semibold px-6 py-2.5 rounded-full text-sm transition">
                   Start the Pilot →
                 </a>
+                <a href="/metrics" target="_blank"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-2.5 rounded-full text-sm transition">
+                  View Metrics Dashboard →
+                </a>
                 <button onClick={() => { setStep("form"); setResult(null); setApproved(false); setApprovedAt(""); setRecordingField(null); recognitionRef.current?.stop(); setForm({ description: "", department: "Cell Therapy Manufacturing", product: "", batchNumber: "", location: "Suite 100 — Cell Therapy Suite A", immediateActions: "" }); }}
                   className="bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-2.5 rounded-full text-sm transition">
                   Run Another Event
