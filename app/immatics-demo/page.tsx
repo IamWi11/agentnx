@@ -90,6 +90,111 @@ export default function ImmaticsDemo() {
   const guidedOpenRef = useRef(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
+
+  // VAPI Guided Interview
+  type VapiStatus = "idle" | "connecting" | "active" | "ending" | "done";
+  const [vapiGuidedOpen, setVapiGuidedOpen] = useState(false);
+  const [vapiGuidedStatus, setVapiGuidedStatus] = useState<VapiStatus>("idle");
+  const [vapiVolume, setVapiVolume] = useState(0);
+  const [vapiError, setVapiError] = useState<string | null>(null);
+  const [vapiFormFilled, setVapiFormFilled] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const vapiGuidedRef = useRef<any>(null);
+
+  const startVapiGuidedInterview = async () => {
+    setVapiGuidedOpen(true);
+    setVapiGuidedStatus("connecting");
+    setVapiError(null);
+    setVapiFormFilled(false);
+    try {
+      const { default: Vapi } = await import("@vapi-ai/web");
+      const vapi = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY!, undefined, { experimentalChromeVideoMuteLightOff: true } as any);
+      vapiGuidedRef.current = vapi;
+
+      vapi.on("call-start", () => setVapiGuidedStatus("active"));
+      vapi.on("volume-level", (v: number) => setVapiVolume(v));
+      vapi.on("call-end", () => { setVapiGuidedStatus("idle"); vapiGuidedRef.current = null; });
+      vapi.on("error", (e: unknown) => {
+        const isNormal = typeof e === "object" && e !== null && (e as any)?.error?.message?.type === "ejected";
+        if (!isNormal) setVapiError("Connection issue — try again");
+        setVapiGuidedStatus("idle");
+      });
+
+      vapi.on("message", (msg: any) => {
+        if (msg?.type === "tool-calls" && Array.isArray(msg.toolCallList)) {
+          for (const tc of msg.toolCallList) {
+            const name: string = tc?.function?.name ?? tc?.name ?? "";
+            if (name === "fill_deviation_form") {
+              const raw = tc?.function?.arguments ?? tc?.arguments ?? "{}";
+              const args = typeof raw === "string" ? JSON.parse(raw) : raw;
+              setForm(prev => ({
+                ...prev,
+                ...(args.product        && { product: args.product }),
+                ...(args.batchNumber    && { batchNumber: args.batchNumber }),
+                ...(args.description    && { description: args.description }),
+                ...(args.immediateActions && { immediateActions: args.immediateActions }),
+                ...(args.location       && { location: args.location }),
+              }));
+              setVapiFormFilled(true);
+              try {
+                vapi.send({ type: "add-message", message: { role: "tool", tool_call_id: tc?.id ?? tc?.functionCallId ?? "", name, content: "Form populated." } });
+              } catch { /* non-fatal */ }
+              setTimeout(() => { vapi.stop(); setVapiGuidedStatus("done"); }, 1800);
+            }
+          }
+        }
+      });
+
+      await vapi.start({
+        model: {
+          provider: "anthropic",
+          model: "claude-sonnet-4-20250514",
+          messages: [{ role: "system", content: `You are Alex, the AgentNX deviation intake agent at immatics. Collect the four fields needed to file a deviation report. Ask ONE question at a time, in this order:
+1. Which product was involved? Options: anzu-cel (IMA203), IMA203CD8, IMA402, or IMA401.
+2. What is the batch number?
+3. What happened? Ask them to describe the deviation event — what was observed, when, and where.
+4. What immediate actions were taken?
+
+Keep each response SHORT — one question only. No preamble. Once you have all four answers, call the fill_deviation_form tool immediately. Do NOT ask about department or location.` }],
+          tools: [{
+            type: "function",
+            function: {
+              name: "fill_deviation_form",
+              description: "Populate the deviation intake form with collected answers",
+              parameters: {
+                type: "object",
+                properties: {
+                  product:          { type: "string", description: "Product name" },
+                  batchNumber:      { type: "string", description: "Batch number" },
+                  description:      { type: "string", description: "Full description of the deviation event" },
+                  immediateActions: { type: "string", description: "Immediate actions taken" },
+                },
+                required: ["product", "batchNumber", "description", "immediateActions"],
+              },
+            },
+          }],
+        },
+        voice: { provider: "openai", voiceId: "nova", model: "tts-1" },
+        firstMessage: "Hi, I'm Alex. Which product was involved — anzu-cel, IMA203CD8, IMA402, or IMA401?",
+      } as any);
+    } catch (e: unknown) {
+      setVapiError(e instanceof Error ? e.message : "Failed to connect");
+      setVapiGuidedStatus("idle");
+    }
+  };
+
+  const stopVapiGuided = () => {
+    setVapiGuidedStatus("ending");
+    vapiGuidedRef.current?.stop();
+  };
+
+  const closeVapiGuided = () => {
+    vapiGuidedRef.current?.stop();
+    setVapiGuidedOpen(false);
+    setVapiGuidedStatus("idle");
+    setVapiVolume(0);
+    setVapiError(null);
+  };
   const [form, setForm] = useState({
     description: "",
     department: "Cell Therapy Manufacturing",
@@ -503,7 +608,7 @@ TONE: Confident, knowledgeable, direct. You are a GMP-trained AI agent — not a
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-sm font-semibold text-gray-300">Event Description</label>
                   <div className="flex items-center gap-2">
-                    <button type="button" onClick={openGuidedInterview}
+                    <button type="button" onClick={startVapiGuidedInterview}
                       className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border border-blue-500/40 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition">
                       <span>📋</span> Guided Interview
                     </button>
@@ -853,7 +958,55 @@ TONE: Confident, knowledgeable, direct. You are a GMP-trained AI agent — not a
         )}
       </div>
 
-      {/* ── Alex Guided Interview Modal ──────────────────────────────────────── */}
+      {/* ── VAPI Guided Interview Modal ──────────────────────────────────────── */}
+      {vapiGuidedOpen && (
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center px-4">
+          <div className="bg-[#0f1420] border border-white/15 rounded-2xl flex flex-col items-center max-w-sm w-full shadow-2xl p-8 gap-5">
+            <button onClick={closeVapiGuided} className="absolute top-4 right-5 text-gray-500 hover:text-white text-lg">✕</button>
+            <div className="w-14 h-14 rounded-full bg-blue-500 flex items-center justify-center text-xl font-bold text-white shadow-lg">A</div>
+            <div className="text-center">
+              <div className="text-white font-bold text-base">Alex — Deviation Intake</div>
+              <div className="text-xs text-gray-400 mt-1">
+                {vapiGuidedStatus === "connecting" ? "Connecting…" :
+                 vapiGuidedStatus === "active"     ? "Listening — speak now" :
+                 vapiGuidedStatus === "ending"     ? "Ending call…" :
+                 vapiGuidedStatus === "done"       ? "✅ Form filled — review below" :
+                 "Ready"}
+              </div>
+            </div>
+            {vapiGuidedStatus === "active" && (
+              <div className="flex items-center gap-1">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="w-1.5 rounded-full bg-blue-400 transition-all duration-100"
+                    style={{ height: `${8 + Math.max(0, (vapiVolume - i * 0.15) * 40)}px`, opacity: vapiVolume > i * 0.15 ? 1 : 0.2 }} />
+                ))}
+              </div>
+            )}
+            {vapiGuidedStatus === "done" && (
+              <div className="w-full bg-emerald-900/30 border border-emerald-500/30 rounded-xl px-4 py-3 text-sm text-emerald-300 text-center">
+                Form auto-filled from your answers. Review and submit below.
+              </div>
+            )}
+            {vapiError && <p className="text-xs text-red-400 text-center">{vapiError}</p>}
+            <div className="flex gap-3">
+              {vapiGuidedStatus === "active" && (
+                <button onClick={stopVapiGuided}
+                  className="bg-red-500 hover:bg-red-400 text-white font-semibold px-5 py-2 rounded-full text-sm transition">
+                  End Interview
+                </button>
+              )}
+              {(vapiGuidedStatus === "done" || vapiGuidedStatus === "idle") && (
+                <button onClick={closeVapiGuided}
+                  className="bg-white/10 hover:bg-white/20 text-white font-semibold px-5 py-2 rounded-full text-sm transition">
+                  {vapiFormFilled ? "Close & Review Form" : "Close"}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Alex Guided Interview Modal (text fallback) ──────────────────────── */}
       {guidedOpen && (
         <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center px-4">
           <div className="bg-[#0f1420] border border-white/15 rounded-2xl flex flex-col max-w-lg w-full shadow-2xl"
