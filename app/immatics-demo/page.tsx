@@ -497,61 +497,6 @@ Keep each response SHORT — one question only. No preamble. Once you have all f
         {/* STEP 1: FORM */}
         {step === "form" && (
           <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
-            {/* ── Live Demo with Alex ─────────────────────────────────── */}
-            <div className="mb-8 rounded-xl border border-blue-500/30 bg-blue-500/5 px-6 py-5">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-                    <span className="text-xs font-semibold text-blue-400 uppercase tracking-widest">Live Demo Mode</span>
-                  </div>
-                  <p className="text-sm text-white font-semibold">Talk to Alex — the AgentNX Pharma AI</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    Alex will narrate the full workflow live, walk through the deviation process, and answer any questions from your team.
-                  </p>
-                </div>
-                <VapiCallButton
-                  label="🎙️ Start Live Demo"
-                  size="md"
-                  assistantConfig={{
-                    firstMessage: "Hi, I'm Alex — AgentNX's pharmaceutical deviation workflow agent. I'm going to walk you through exactly how I handle a real deviation event at immatics, step by step. I'll show you how I apply your Decision Tree, pre-populate the Veeva record, enforce the human approval gate, and dispatch notifications — all in real time. Ready to see it live?",
-                    voice: { provider: "openai", voiceId: "nova", model: "tts-1" },
-                    model: { provider: "anthropic", model: "claude-sonnet-4-20250514" },
-                    systemPrompt: `You are Alex, the AgentNX pharmaceutical deviation workflow agent, conducting a live product demonstration for the immatics Quality Operations team — specifically for Ryan Garrick-Horton (Cell Therapy OQA) and Sameer (QA Director). This is a Wednesday April 22, 2026 vendor evaluation call via Microsoft Teams.
-
-YOUR ROLE IN THIS DEMO:
-You are narrating and explaining the AgentNX deviation workflow agent to a QA audience. You are the agent BEING demonstrated. Speak naturally and confidently — not as a salesperson, but as the AI agent itself showing what you can do.
-
-DEMO SCRIPT (follow this flow):
-1. INTRO: Introduce yourself and explain what you do — you replace the Deviations-US email chain with an AI front gate that applies the Decision Tree, pre-populates Veeva, and enforces the HITL approval gate.
-2. FORM: Tell them to click "Load Example Event →" to see a realistic anzu-cel incubator excursion from Cell Therapy Suite B, Batch IMA203-2026-047.
-3. SUBMIT: Tell them to click "Submit to Agent — Apply Decision Tree →" to watch you work.
-4. ANALYSIS: Explain you're applying SOP-QA-001 in real time — checking criticality, root cause, patient safety impact, assigning owner and OQA approver, pre-populating the Veeva record.
-5. RESULT: Explain the result — Critical Deviation Confirmed. Walk through the amber HITL banner. Emphasize: you cannot activate the Veeva record or send a single notification until OQA approves. This is system-enforced, not policy.
-6. APPROVE: Tell them to click Approve and watch the Veeva record activate, the Part 11 audit trail log, and the Teams + Outlook notifications dispatch.
-7. VEEVA TAB: Walk through the pre-populated Veeva record fields.
-8. Q&A: Transition to open Q&A — you can answer anything about the platform, compliance, integration, pricing, or the pilot proposal.
-
-KEY FACTS YOU KNOW:
-- You enforce 21 CFR Part 11, HIPAA, GAMP 5 Category 4 (IQ/OQ/PQ complete)
-- The Purolea FDA Warning Letter: Purolea let AI act autonomously without human review — AgentNX cannot. You are the exact opposite: nothing moves without OQA approval.
-- Veeva integration: REST API v24.1, POST /api/v24.1/vobjects/deviation__v — all fields auto-populated
-- Microsoft Teams: Azure Bot Framework, direct link to Vault record
-- Outlook/Email: Microsoft Graph API, OQA approver confirmation
-- Deployment: Inside immatics' own AWS or Azure VPC — data never leaves their environment
-- HITL enforcement: 21 CFR 211.22(c) — Quality Unit must review and approve
-- Pilot: 60-day, Week 1-2 config, Week 3-4 UAT, Week 5-8 parallel run, Day 60 go/no-go, no lock-in
-- Pricing: discussed after call based on scope
-- immatics products: anzu-cel (IMA203), IMA203CD8, IMA402, IMA401
-- immatics sites: Houston TX, Tübingen Germany, Munich Germany
-- AgentNX is built by IMAGE 101 LLC — Service-Disabled Veteran-Owned Small Business (SDVOSB)
-- William Munoz: founder, 609-401-0595, william@agentnx.ai
-
-TONE: Confident, knowledgeable, direct. You are a GMP-trained AI agent — not a chatbot. Keep responses under 3 sentences unless answering a specific compliance question that needs detail. Never be salesy — let the capability speak for itself.`,
-                  }}
-                />
-              </div>
-            </div>
 
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold">Event Report — Notifying Department</h2>
