@@ -333,6 +333,10 @@ export default function ImmaticsDemo() {
         </a>
         <div className="flex items-center gap-3">
           <span className="text-gray-400 text-sm">Deviation Front Gate</span>
+          <a href="/metrics" target="_blank"
+            className="bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 text-xs font-semibold px-3 py-1 rounded-full hover:bg-emerald-600/40 transition">
+            📊 Metrics Dashboard →
+          </a>
           <span className="bg-orange-500/20 border border-orange-500/30 text-orange-400 text-xs font-semibold px-3 py-1 rounded-full">
             immatics Demo
           </span>
