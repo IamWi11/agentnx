@@ -18,25 +18,17 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      // Scripts: self + Vercel analytics/speed insights
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://cdn.vercel-insights.com https://challenges.cloudflare.com https://*.clerk.accounts.dev",
-      // Styles: unsafe-inline required for framer-motion and Tailwind
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://va.vercel-scripts.com https://cdn.vercel-insights.com https://challenges.cloudflare.com https://*.clerk.accounts.dev https://*.daily.co",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      // Images: self, data URIs, and any HTTPS source
       "img-src 'self' data: https:",
-      // Fonts: self and Google Fonts CDN
       "font-src 'self' https://fonts.gstatic.com",
-      // API connections: self + VAPI + Vercel telemetry + Stripe + Cloudflare Turnstile
-      "connect-src 'self' https://api.vapi.ai wss://*.vapi.ai https://*.daily.co wss://*.daily.co https://vitals.vercel-insights.com https://va.vercel-scripts.com https://api.stripe.com https://challenges.cloudflare.com",
-      // Media (microphone access for VAPI voice)
-      "media-src 'self' blob:",
-      // Cloudflare Turnstile iframe
-      "frame-src https://challenges.cloudflare.com",
-      // No third-party framing of this site
+      "connect-src 'self' https://api.vapi.ai wss://*.vapi.ai https://*.daily.co wss://*.daily.co https://*.pluot.blue wss://*.pluot.blue https://vitals.vercel-insights.com https://va.vercel-scripts.com https://api.stripe.com https://challenges.cloudflare.com https://api.anthropic.com https://*.clerk.accounts.dev",
+      "media-src 'self' blob: mediastream:",
+      // Daily.co AudioWorklet uses blob: workers for mic audio processing
+      "worker-src blob: 'self'",
+      "frame-src https://challenges.cloudflare.com https://*.daily.co",
       "frame-ancestors 'none'",
-      // Only allow forms to submit to our own origin
       "form-action 'self'",
-      // Prevent base tag hijacking
       "base-uri 'self'",
     ].join("; "),
   },
