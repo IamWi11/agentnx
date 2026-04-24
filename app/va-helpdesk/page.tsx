@@ -113,7 +113,6 @@ export default function VAHelpdeskDemo() {
   const [transcript, setTranscript] = useState<TranscriptTurn[]>([]);
   const [callError, setCallError] = useState<string | null>(null);
   const [volume, setVolume] = useState(0);
-  const [micState, setMicState] = useState<"unknown" | "granted" | "speaking" | "silent">("unknown");
   const vapiRef = useRef<unknown>(null);
   const transcriptRef = useRef<TranscriptTurn[]>([]);
 
@@ -168,7 +167,6 @@ export default function VAHelpdeskDemo() {
     setActive(null);
     setElapsedMs(null);
     setError(null);
-    setMicState("unknown");
     setCallStatus("connecting");
 
     try {
@@ -183,25 +181,8 @@ export default function VAHelpdeskDemo() {
       const vapi = new Vapi(key, undefined, { experimentalChromeVideoMuteLightOff: true } as unknown as Record<string, unknown>);
       vapiRef.current = vapi;
 
-      vapi.on("call-start", () => {
-        setCallStatus("active");
-        // VAPI can start muted under some configs — force-unmute so caller
-        // audio actually reaches the assistant. Mirrors VapiCallButton.
-        try {
-          const v = vapi as unknown as { isMuted?: () => boolean; setMuted?: (m: boolean) => void };
-          if (typeof v.isMuted === "function" && v.isMuted()) {
-            v.setMuted?.(false);
-          }
-        } catch (err) {
-          console.warn("[va-helpdesk] unmute check failed", err);
-        }
-      });
+      vapi.on("call-start", () => setCallStatus("active"));
       vapi.on("volume-level", (v: number) => setVolume(v));
-      // VAPI emits speech-start / speech-end events from its VAD (Voice Activity
-      // Detection) — so we can surface "mic is picking you up" to the UI.
-      const loose = vapi as unknown as { on: (ev: string, fn: () => void) => void };
-      loose.on("speech-start", () => setMicState("speaking"));
-      loose.on("speech-end", () => setMicState("silent"));
       vapi.on("call-end", () => {
         setVolume(0);
         vapiRef.current = null;
@@ -222,10 +203,6 @@ export default function VAHelpdeskDemo() {
 
       vapi.on("message", (msg: { type?: string; transcriptType?: string; role?: string; transcript?: string }) => {
         if (msg?.type === "transcript" && msg?.transcriptType === "final" && msg.transcript) {
-          // Belt-and-suspenders: the first transcript event proves the call is
-          // live, even if VAPI's `call-start` event never fired (known Safari
-          // + daily.co WebRTC quirk). Force state to active so the UI unsticks.
-          setCallStatus(s => (s === "connecting" ? "active" : s));
           const turn: TranscriptTurn = {
             role: msg.role === "assistant" ? "assistant" : "user",
             text: msg.transcript,
@@ -253,7 +230,6 @@ export default function VAHelpdeskDemo() {
         }
         setCallStatus("idle");
         setVolume(0);
-        setMicState("unknown");
       });
 
       await vapi.start({
@@ -343,28 +319,18 @@ export default function VAHelpdeskDemo() {
                 </button>
 
                 {callActive && (
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className="w-1 rounded-full bg-blue-400 transition-all duration-100"
-                          style={{
-                            height: `${8 + Math.max(0, (volume - i * 0.15) * 40)}px`,
-                            opacity: volume > i * 0.15 ? 1 : 0.2,
-                          }}
-                        />
-                      ))}
-                      <span className="text-[10px] text-gray-500 ml-2 uppercase tracking-wider">Sam</span>
-                    </div>
-                    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider transition-colors ${
-                      micState === "speaking"
-                        ? "bg-green-500/20 text-green-300 border border-green-500/40"
-                        : "bg-white/5 text-gray-500 border border-white/10"
-                    }`}>
-                      <span className={micState === "speaking" ? "animate-pulse" : ""}>🎤</span>
-                      {micState === "speaking" ? "Hearing you" : "Listening…"}
-                    </div>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="w-1 rounded-full bg-blue-400 transition-all duration-100"
+                        style={{
+                          height: `${8 + Math.max(0, (volume - i * 0.15) * 40)}px`,
+                          opacity: volume > i * 0.15 ? 1 : 0.2,
+                        }}
+                      />
+                    ))}
+                    <span className="text-[10px] text-gray-500 ml-2 uppercase tracking-wider">Live</span>
                   </div>
                 )}
               </div>
