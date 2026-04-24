@@ -171,32 +171,16 @@ export default function VAHelpdeskDemo() {
     setMicState("unknown");
     setCallStatus("connecting");
 
-    // Pre-flight mic permission check — fails fast with a clear message
-    // instead of letting VAPI silently connect with no audio input.
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(t => t.stop());
-      setMicState("granted");
-    } catch (e) {
-      const name = e instanceof Error ? e.name : "";
-      if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-        setCallError("Microphone permission denied. Click the 🔒 icon in the address bar, allow microphone, and try again.");
-      } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
-        setCallError("No microphone detected. Check your system audio input device.");
-      } else {
-        setCallError(`Microphone unavailable: ${e instanceof Error ? e.message : String(e)}`);
-      }
-      setCallStatus("idle");
-      return;
-    }
-
     try {
       const { default: Vapi } = await import("@vapi-ai/web");
       const key = process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY;
       if (!key) {
         throw new Error("Voice not configured (NEXT_PUBLIC_VAPI_PUBLIC_KEY missing).");
       }
-      const vapi = new Vapi(key);
+      // Third-arg config mirrors immatics-demo — stable across Safari + Chrome.
+      // Do NOT pre-acquire the mic via getUserMedia first; on Safari, releasing
+      // it before VAPI starts causes daily.co's WebRTC to fail negotiation.
+      const vapi = new Vapi(key, undefined, { experimentalChromeVideoMuteLightOff: true } as unknown as Record<string, unknown>);
       vapiRef.current = vapi;
 
       vapi.on("call-start", () => {
@@ -253,9 +237,8 @@ export default function VAHelpdeskDemo() {
 
       vapi.on("error", (e: unknown) => {
         console.error("[VAPI error]", e);
-        // Safari + daily.co WebRTC frequently emit `ejected` / "Meeting has ended"
-        // when the WebRTC negotiation fails. Detect and surface a concrete hint
-        // rather than a raw JSON blob.
+        // `ejected` fires on normal call-end too — treat it as not-an-error.
+        // Mirrors the pattern used in immatics-demo and VapiCallButton.
         const errObj = (typeof e === "object" && e !== null ? (e as Record<string, unknown>) : {}) as {
           error?: { message?: { type?: string; msg?: string } | string };
           errorMsg?: string;
@@ -263,11 +246,8 @@ export default function VAHelpdeskDemo() {
         };
         const inner = errObj?.error?.message;
         const innerType = typeof inner === "object" && inner !== null ? inner.type : undefined;
-        const innerMsg = typeof inner === "object" && inner !== null ? inner.msg : typeof inner === "string" ? inner : undefined;
-        const isEjected = innerType === "ejected" || innerMsg === "Meeting has ended";
-        if (isEjected) {
-          setCallError("Call dropped — Safari + VAPI WebRTC is unreliable. For the best result, open this page in Chrome and retry.");
-        } else {
+        const isNormalEnd = innerType === "ejected";
+        if (!isNormalEnd) {
           const m = e instanceof Error ? e.message : (errObj.errorMsg || errObj.message || JSON.stringify(e));
           setCallError(String(m));
         }
@@ -282,7 +262,7 @@ export default function VAHelpdeskDemo() {
           model: "claude-sonnet-4-20250514",
           messages: [{ role: "system", content: TRIAGE_SYSTEM_PROMPT }],
         },
-        voice: { provider: "openai", voiceId: "nova" },
+        voice: { provider: "openai", voiceId: "nova", model: "tts-1" },
         firstMessage: "IT Helpdesk triage, this is Sam. What's going on?",
       } as unknown as Parameters<typeof vapi.start>[0]);
     } catch (e) {
