@@ -238,6 +238,10 @@ export default function VAHelpdeskDemo() {
 
       vapi.on("message", (msg: { type?: string; transcriptType?: string; role?: string; transcript?: string }) => {
         if (msg?.type === "transcript" && msg?.transcriptType === "final" && msg.transcript) {
+          // Belt-and-suspenders: the first transcript event proves the call is
+          // live, even if VAPI's `call-start` event never fired (known Safari
+          // + daily.co WebRTC quirk). Force state to active so the UI unsticks.
+          setCallStatus(s => (s === "connecting" ? "active" : s));
           const turn: TranscriptTurn = {
             role: msg.role === "assistant" ? "assistant" : "user",
             text: msg.transcript,
@@ -249,9 +253,27 @@ export default function VAHelpdeskDemo() {
 
       vapi.on("error", (e: unknown) => {
         console.error("[VAPI error]", e);
-        const m = e instanceof Error ? e.message : typeof e === "object" && e !== null ? JSON.stringify(e) : String(e);
-        setCallError(m);
+        // Safari + daily.co WebRTC frequently emit `ejected` / "Meeting has ended"
+        // when the WebRTC negotiation fails. Detect and surface a concrete hint
+        // rather than a raw JSON blob.
+        const errObj = (typeof e === "object" && e !== null ? (e as Record<string, unknown>) : {}) as {
+          error?: { message?: { type?: string; msg?: string } | string };
+          errorMsg?: string;
+          message?: string;
+        };
+        const inner = errObj?.error?.message;
+        const innerType = typeof inner === "object" && inner !== null ? inner.type : undefined;
+        const innerMsg = typeof inner === "object" && inner !== null ? inner.msg : typeof inner === "string" ? inner : undefined;
+        const isEjected = innerType === "ejected" || innerMsg === "Meeting has ended";
+        if (isEjected) {
+          setCallError("Call dropped — Safari + VAPI WebRTC is unreliable. For the best result, open this page in Chrome and retry.");
+        } else {
+          const m = e instanceof Error ? e.message : (errObj.errorMsg || errObj.message || JSON.stringify(e));
+          setCallError(String(m));
+        }
         setCallStatus("idle");
+        setVolume(0);
+        setMicState("unknown");
       });
 
       await vapi.start({
@@ -314,19 +336,19 @@ export default function VAHelpdeskDemo() {
 
               <div className="flex items-center gap-3">
                 <button
-                  onClick={callActive ? endCall : startCall}
-                  disabled={callBusy || callStatus === "classifying"}
+                  onClick={callStatus === "idle" || callStatus === "classifying" ? startCall : endCall}
+                  disabled={callStatus === "ending" || callStatus === "classifying"}
                   className={`
                     flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm transition
-                    ${callActive
+                    ${callStatus === "active" || callStatus === "connecting"
                       ? "bg-red-500 hover:bg-red-400 text-white"
-                      : callBusy
+                      : callStatus === "ending" || callStatus === "classifying"
                         ? "bg-white/10 text-gray-400 cursor-not-allowed"
                         : "bg-blue-500 hover:bg-blue-400 text-white"}
                     disabled:opacity-50 disabled:cursor-not-allowed
                   `}
                 >
-                  {callBusy ? (
+                  {callStatus === "connecting" || callStatus === "ending" || callStatus === "classifying" ? (
                     <span className="w-3 h-3 rounded-full border-2 border-white/60 border-t-transparent animate-spin" />
                   ) : callActive ? (
                     <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
@@ -334,7 +356,7 @@ export default function VAHelpdeskDemo() {
                     <span>🎙️</span>
                   )}
                   {callStatus === "idle" && "Call the triage agent"}
-                  {callStatus === "connecting" && "Connecting…"}
+                  {callStatus === "connecting" && "Connecting… (tap to cancel)"}
                   {callStatus === "active" && "End call"}
                   {callStatus === "ending" && "Ending…"}
                   {callStatus === "classifying" && "Classifying transcript…"}
