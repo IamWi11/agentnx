@@ -131,7 +131,7 @@ const translations = {
         name: "Enterprise / Government",
         description: "Pricing is scoped per engagement. Government contracts, pharma GxP deployments, and multi-agent enterprise builds are quoted based on use case, scope, and integration requirements.",
         features: [
-          "SDVOSB set-aside eligible — sole-source up to $4M",
+          "SDVOSB set-aside eligible — sole-source up to $5M (VA) / $4.5M (other agencies)",
           "Multi-agent deployments",
           "Custom integrations (ServiceNow, Splunk, Veeva, AD)",
           "NIST 800-53 · FedRAMP path · ATO support",
@@ -275,7 +275,7 @@ const translations = {
         name: "Empresa / Gobierno",
         description: "El precio se determina según el alcance del proyecto. Los contratos gubernamentales, despliegues GxP y builds empresariales multi-agente se cotizan según caso de uso, alcance y requisitos de integración.",
         features: [
-          "Elegible para adjudicación directa SDVOSB hasta $4M",
+          "Elegible para adjudicación directa SDVOSB hasta $5M (VA) / $4.5M (otras agencias)",
           "Despliegues multi-agente",
           "Integraciones personalizadas (ServiceNow, Splunk, Veeva, AD)",
           "NIST 800-53 · Ruta FedRAMP · Soporte ATO",

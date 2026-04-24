@@ -86,7 +86,9 @@ export async function POST(req: NextRequest) {
 
       const planData = PLANS[plan.toLowerCase()] ?? PLANS.pilot;
 
-      console.log(`[vapi-sales] Payment link sent to ${email} — ${planData.name} plan${business_summary ? ` — ${business_summary}` : ""}`);
+      // PII redacted: log email domain only + plan; full email + business_summary kept out of stdout.
+      const emailDomain = typeof email === "string" && email.includes("@") ? email.split("@")[1] : "unknown";
+      console.log(`[vapi-sales] Payment link sent to <redacted>@${emailDomain} — ${planData.name} plan`);
 
       return NextResponse.json({
         results: [{

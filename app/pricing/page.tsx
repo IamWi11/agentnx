@@ -98,7 +98,7 @@ const PLANS = [
     cta: "Request Proposal",
     description: "Government, pharma, and multi-agency deployments.",
     features: [
-      "SDVOSB sole-source eligible up to $4M",
+      "SDVOSB sole-source eligible — up to $5M (VA) / $4.5M (other agencies)",
       "Unlimited agents + custom verticals",
       "Custom integrations (Veeva, ServiceNow, Splunk)",
       "NIST 800-53 · FedRAMP path · ATO support",
