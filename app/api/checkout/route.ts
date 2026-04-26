@@ -63,12 +63,18 @@ export async function GET(req: NextRequest) {
 
     if (!response.ok || !session.url) {
       console.error("Stripe error:", session);
-      return NextResponse.json({ error: "Stripe session failed", detail: session.error?.message }, { status: 500 });
+      return NextResponse.json(
+        { error: "Checkout temporarily unavailable. Please contact william.munoz@image101llc.com." },
+        { status: 503 }
+      );
     }
 
     return NextResponse.redirect(session.url, 303);
   } catch (err) {
     console.error("Checkout error:", err);
-    return NextResponse.json({ error: "Checkout failed", detail: String(err) }, { status: 500 });
+    return NextResponse.json(
+      { error: "Checkout temporarily unavailable. Please contact william.munoz@image101llc.com." },
+      { status: 503 }
+    );
   }
 }
