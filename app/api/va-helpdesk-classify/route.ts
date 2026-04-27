@@ -54,30 +54,42 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing ticket" }, { status: 400 });
   }
 
-  const response = await client.messages.create({
-    model: "claude-opus-4-7",
-    max_tokens: 800,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: `Ticket:\n\n${safeTicket}` }],
+  const encoder = new TextEncoder();
+  const readable = new ReadableStream({
+    async start(controller) {
+      try {
+        const stream = client.messages.stream({
+          model: "claude-opus-4-7",
+          max_tokens: 800,
+          system: SYSTEM_PROMPT,
+          messages: [{ role: "user", content: `Ticket:\n\n${safeTicket}` }],
+        });
+
+        for await (const event of stream) {
+          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`)
+            );
+          }
+        }
+        controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+        controller.close();
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "stream error";
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`)
+        );
+        controller.close();
+      }
+    },
   });
 
-  const text = response.content
-    .filter((b): b is Anthropic.TextBlock => b.type === "text")
-    .map(b => b.text)
-    .join("")
-    .trim();
-
-  // Extract JSON from the response — the model is instructed to return pure JSON
-  // but belt-and-suspenders against a stray fence.
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    return NextResponse.json({ error: "Model returned non-JSON", raw: text }, { status: 502 });
-  }
-
-  try {
-    const parsed = JSON.parse(jsonMatch[0]);
-    return NextResponse.json({ classification: parsed, model: "claude-opus-4-7" });
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON from model", raw: text }, { status: 502 });
-  }
+  return new Response(readable, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      "Connection": "keep-alive",
+      "X-Accel-Buffering": "no",
+    },
+  });
 }

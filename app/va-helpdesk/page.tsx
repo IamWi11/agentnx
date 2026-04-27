@@ -25,6 +25,43 @@ type Ticket = {
 type CallStatus = "idle" | "connecting" | "active" | "ending" | "classifying";
 type TranscriptTurn = { role: "user" | "assistant"; text: string };
 
+// Best-effort partial JSON parser. Extracts fields as they stream in even if
+// the full JSON object isn't yet closed. Multi-line string fields (reasoning,
+// suggestedResponse) get extracted mid-stream too, so they render word-by-word.
+function parseStreamingClassification(raw: string): Partial<Classification> {
+  const text = raw;
+  const result: Partial<Classification> = {};
+
+  // Closed string fields — only set once the closing quote is present
+  for (const field of ["priority", "category", "routeTo", "escalationReason"] as const) {
+    const m = text.match(new RegExp(`"${field}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`));
+    if (m) (result as Record<string, unknown>)[field] = m[1].replace(/\\n/g, "\n").replace(/\\"/g, '"');
+  }
+
+  // Multi-line streaming fields — extract even mid-stream so the user watches
+  // the agent type. Try complete match first, fall back to "open string".
+  for (const field of ["reasoning", "suggestedResponse"] as const) {
+    const complete = text.match(new RegExp(`"${field}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`));
+    if (complete) {
+      (result as Record<string, unknown>)[field] = complete[1].replace(/\\n/g, "\n").replace(/\\"/g, '"');
+    } else {
+      const partial = text.match(new RegExp(`"${field}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*?)$`));
+      if (partial) {
+        (result as Record<string, unknown>)[field] = partial[1].replace(/\\n/g, "\n").replace(/\\"/g, '"');
+      }
+    }
+  }
+
+  // Number / boolean
+  const conf = text.match(/"confidence"\s*:\s*(\d+)/);
+  if (conf) result.confidence = parseInt(conf[1], 10);
+
+  const auto = text.match(/"autoResolvable"\s*:\s*(true|false)/);
+  if (auto) result.autoResolvable = auto[1] === "true";
+
+  return result;
+}
+
 // Pre-baked sample classification shown on first load so the demo never looks empty.
 // Replaced live as soon as a real ticket is clicked or a voice call completes.
 const SAMPLE_CLASSIFICATION: Classification = {
@@ -159,7 +196,8 @@ export default function VAHelpdeskDemo() {
   // Cleared the moment the user starts a real call or clicks a real ticket.
   const [active, setActive] = useState<Ticket | null>(SAMPLE_TICKET);
   const [loading, setLoading] = useState(false);
-  const [classification, setClassification] = useState<Classification | null>(SAMPLE_CLASSIFICATION);
+  const [classification, setClassification] = useState<Partial<Classification> | null>(SAMPLE_CLASSIFICATION);
+  const [streaming, setStreaming] = useState(false);
   const [isSample, setIsSample] = useState(true);
   const [elapsedMs, setElapsedMs] = useState<number | null>(890);
   const [error, setError] = useState<string | null>(null);
@@ -178,6 +216,7 @@ export default function VAHelpdeskDemo() {
     setIsSample(false);
     setElapsedMs(null);
     setError(null);
+    setStreaming(false);
     const started = performance.now();
     try {
       const res = await fetch("/api/va-helpdesk-classify", {
@@ -185,17 +224,69 @@ export default function VAHelpdeskDemo() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ticket: ticketText }),
       });
-      const data = await res.json();
-      if (!res.ok) {
+      if (!res.ok || !res.body) {
+        const data = await res.json().catch(() => ({ error: "Classification failed" }));
         setError(data.error || "Classification failed");
-      } else {
-        setClassification(data.classification);
-        setElapsedMs(Math.round(performance.now() - started));
+        return;
       }
+
+      setLoading(false);
+      setStreaming(true);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let raw = "";
+      let firstFieldAt: number | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // SSE: split on double-newline; keep the trailing partial event in the buffer
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
+        for (const ev of events) {
+          const line = ev.trim();
+          if (!line.startsWith("data:")) continue;
+          const payload = line.slice(5).trim();
+          if (payload === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(payload) as { text?: string; error?: string };
+            if (parsed.error) {
+              setError(parsed.error);
+              continue;
+            }
+            if (parsed.text) {
+              raw += parsed.text;
+              const partial = parseStreamingClassification(raw);
+              if (Object.keys(partial).length > 0) {
+                if (firstFieldAt === null) firstFieldAt = performance.now();
+                setClassification(partial);
+              }
+            }
+          } catch {
+            // tolerate occasional malformed event
+          }
+        }
+      }
+
+      // Final pass: try strict JSON.parse for canonical state
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          const final = JSON.parse(jsonMatch[0]);
+          setClassification(final);
+        } catch {
+          // keep last partial
+        }
+      }
+      setElapsedMs(Math.round(performance.now() - started));
     } catch {
       setError("Network error");
     } finally {
       setLoading(false);
+      setStreaming(false);
       setCallStatus(s => (s === "classifying" ? "idle" : s));
     }
     void label;
@@ -578,13 +669,13 @@ export default function VAHelpdeskDemo() {
               )}
             </div>
 
-            {!active && !classification && callStatus === "idle" && !loading && (
+            {!active && !classification && callStatus === "idle" && !loading && !streaming && (
               <div className="rounded-xl border border-dashed border-white/10 p-10 text-center text-gray-500 text-sm">
                 Call the triage agent on the left, or click a queued ticket below it, to see structured output here.
               </div>
             )}
 
-            {(loading || callStatus === "classifying") && (
+            {(loading || callStatus === "classifying") && !streaming && (
               <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
@@ -607,95 +698,127 @@ export default function VAHelpdeskDemo() {
               </div>
             )}
 
-            {classification && !loading && (
+            {classification && (!loading || streaming) && (
               <div className="space-y-4 animate-[fadeInUp_400ms_ease-out]">
+                {streaming && (
+                  <div className="flex items-center gap-2 text-[11px] text-blue-300 font-mono uppercase tracking-wider">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-400" />
+                    </span>
+                    Streaming · agent thinking
+                  </div>
+                )}
                 {/* Priority + Category */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className={`rounded-xl border p-4 ${priorityColor(classification.priority)} relative overflow-hidden`}>
-                    {classification.priority === "P1" && (
-                      <span className="absolute top-2 right-2 flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-400" />
-                      </span>
-                    )}
-                    <div className="text-[10px] font-bold uppercase tracking-wider opacity-70 mb-1 flex items-center gap-1.5">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd"/></svg>
-                      Priority
-                    </div>
-                    <div className="text-3xl font-extrabold tabular-nums">{classification.priority}</div>
+                {(classification.priority || classification.category) && (
+                  <div className="grid grid-cols-2 gap-3 animate-[fadeInUp_300ms_ease-out]">
+                    {classification.priority ? (
+                      <div className={`rounded-xl border p-4 ${priorityColor(classification.priority)} relative overflow-hidden`}>
+                        {classification.priority === "P1" && (
+                          <span className="absolute top-2 right-2 flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-400" />
+                          </span>
+                        )}
+                        <div className="text-[10px] font-bold uppercase tracking-wider opacity-70 mb-1 flex items-center gap-1.5">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd"/></svg>
+                          Priority
+                        </div>
+                        <div className="text-3xl font-extrabold tabular-nums">{classification.priority}</div>
+                      </div>
+                    ) : <div />}
+                    {classification.category ? (
+                      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1 flex items-center gap-1.5">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/></svg>
+                          Category
+                        </div>
+                        <div className="text-sm font-semibold leading-tight">{classification.category}</div>
+                      </div>
+                    ) : <div />}
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1 flex items-center gap-1.5">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/></svg>
-                      Category
-                    </div>
-                    <div className="text-sm font-semibold leading-tight">{classification.category}</div>
-                  </div>
-                </div>
+                )}
 
                 {/* Routing */}
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1 flex items-center gap-1.5">
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 5a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1V9zm9 1a1 1 0 011-1h3a1 1 0 011 1v5a1 1 0 01-1 1h-3a1 1 0 01-1-1v-5z" clipRule="evenodd"/></svg>
-                    Routed To
-                  </div>
-                  <div className="text-base font-semibold text-blue-300">{classification.routeTo}</div>
-                  <div className="mt-2 text-xs">
-                    <span className={classification.autoResolvable ? "text-green-400" : "text-orange-400"}>
-                      {classification.autoResolvable ? "✓ Resolvable at Tier-1 (one approval click)" : "→ Tier-2 escalation required"}
-                    </span>
-                  </div>
-                  {/* Confidence bar */}
-                  <div className="mt-3">
-                    <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">
-                      <span>Confidence</span>
-                      <span className="tabular-nums text-gray-300">{classification.confidence}%</span>
+                {classification.routeTo && (
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 animate-[fadeInUp_300ms_ease-out]">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1 flex items-center gap-1.5">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 5a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1V9zm9 1a1 1 0 011-1h3a1 1 0 011 1v5a1 1 0 01-1 1h-3a1 1 0 01-1-1v-5z" clipRule="evenodd"/></svg>
+                      Routed To
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-white/[0.06] overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${priorityBarColor(classification.priority)} transition-all duration-700`}
-                        style={{ width: `${Math.min(100, Math.max(0, classification.confidence))}%` }}
-                      />
-                    </div>
+                    <div className="text-base font-semibold text-blue-300">{classification.routeTo}</div>
+                    {typeof classification.autoResolvable === "boolean" && (
+                      <div className="mt-2 text-xs">
+                        <span className={classification.autoResolvable ? "text-green-400" : "text-orange-400"}>
+                          {classification.autoResolvable ? "✓ Resolvable at Tier-1 (one approval click)" : "→ Tier-2 escalation required"}
+                        </span>
+                      </div>
+                    )}
+                    {typeof classification.confidence === "number" && (
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">
+                          <span>Confidence</span>
+                          <span className="tabular-nums text-gray-300">{classification.confidence}%</span>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full bg-white/[0.06] overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${priorityBarColor(classification.priority ?? "")} transition-all duration-700`}
+                            style={{ width: `${Math.min(100, Math.max(0, classification.confidence))}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {classification.autoResolvable === false && classification.escalationReason && (
+                      <div className="text-xs text-gray-400 mt-3 pt-3 border-t border-white/5">
+                        <span className="text-gray-500">Escalation reason:</span> {classification.escalationReason}
+                      </div>
+                    )}
                   </div>
-                  {!classification.autoResolvable && classification.escalationReason && (
-                    <div className="text-xs text-gray-400 mt-3 pt-3 border-t border-white/5">
-                      <span className="text-gray-500">Escalation reason:</span> {classification.escalationReason}
-                    </div>
-                  )}
-                </div>
+                )}
 
-                {/* Reasoning */}
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 flex items-center gap-1.5">
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/></svg>
-                    Agent Reasoning
+                {/* Reasoning — streams in word-by-word */}
+                {classification.reasoning && (
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 animate-[fadeInUp_300ms_ease-out]">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 flex items-center gap-1.5">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/></svg>
+                      Agent Reasoning
+                    </div>
+                    <div className="text-sm text-gray-300 leading-relaxed">
+                      {classification.reasoning}
+                      {streaming && <span className="inline-block w-1.5 h-4 ml-0.5 bg-blue-400 animate-pulse align-middle" />}
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-300 leading-relaxed">{classification.reasoning}</div>
-                </div>
+                )}
 
-                {/* Suggested response */}
-                <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-blue-300 mb-2 flex items-center gap-1.5">
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
-                    Drafted Response to Reporter
+                {/* Suggested response — streams in word-by-word */}
+                {classification.suggestedResponse && (
+                  <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 animate-[fadeInUp_300ms_ease-out]">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-blue-300 mb-2 flex items-center gap-1.5">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
+                      Drafted Response to Reporter
+                    </div>
+                    <div className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">
+                      {classification.suggestedResponse}
+                      {streaming && <span className="inline-block w-1.5 h-4 ml-0.5 bg-blue-400 animate-pulse align-middle" />}
+                    </div>
+                    {!streaming && (
+                      <div className="flex gap-2 mt-3 pt-3 border-t border-white/5">
+                        <button className="bg-blue-500 hover:bg-blue-400 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">
+                          Send
+                        </button>
+                        <button className="bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">
+                          Edit
+                        </button>
+                        <button
+                          onClick={reset}
+                          className="bg-white/5 hover:bg-white/10 text-gray-400 text-xs font-semibold px-3 py-1.5 rounded-lg ml-auto"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <div className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">{classification.suggestedResponse}</div>
-                  <div className="flex gap-2 mt-3 pt-3 border-t border-white/5">
-                    <button className="bg-blue-500 hover:bg-blue-400 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">
-                      Send
-                    </button>
-                    <button className="bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">
-                      Edit
-                    </button>
-                    <button
-                      onClick={reset}
-                      className="bg-white/5 hover:bg-white/10 text-gray-400 text-xs font-semibold px-3 py-1.5 rounded-lg ml-auto"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                </div>
+                )}
               </div>
             )}
           </div>
