@@ -18,11 +18,12 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://va.vercel-scripts.com https://cdn.vercel-insights.com https://challenges.cloudflare.com https://*.clerk.accounts.dev https://*.daily.co",
+      // Removed 'unsafe-eval' and *.clerk.accounts.dev — Clerk uninstalled, eval not needed
+      "script-src 'self' 'unsafe-inline' blob: https://va.vercel-scripts.com https://cdn.vercel-insights.com https://challenges.cloudflare.com https://*.daily.co",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: https:",
       "font-src 'self' https://fonts.gstatic.com",
-      "connect-src 'self' https://api.vapi.ai wss://*.vapi.ai https://*.daily.co wss://*.daily.co https://*.pluot.blue wss://*.pluot.blue https://vitals.vercel-insights.com https://va.vercel-scripts.com https://api.stripe.com https://challenges.cloudflare.com https://api.anthropic.com https://*.clerk.accounts.dev",
+      "connect-src 'self' https://api.vapi.ai wss://*.vapi.ai https://*.daily.co wss://*.daily.co https://*.pluot.blue wss://*.pluot.blue https://vitals.vercel-insights.com https://va.vercel-scripts.com https://api.stripe.com https://challenges.cloudflare.com https://api.anthropic.com",
       "media-src 'self' blob: mediastream:",
       // Daily.co AudioWorklet uses blob: workers for mic audio processing
       "worker-src blob: 'self'",

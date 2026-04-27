@@ -191,8 +191,9 @@ Be specific, professional, and GMP-compliant.`;
       `,
     });
 
-    return NextResponse.json({ success: true, reportPreview: reportText.slice(0, 200) });
+    logger.audit("submit-deviation", "deviation_submitted", "anonymous", { product: data.product, batch: data.batchNumber, ip });
     logger.info("submit-deviation", "Report generated and routed", { product: data.product, batch: data.batchNumber });
+    return NextResponse.json({ success: true, reportPreview: reportText.slice(0, 200) });
   } catch (err) {
     logger.error("submit-deviation", "Report generation failed", { err: err instanceof Error ? err.message : String(err) });
     return NextResponse.json({ error: "Report generation failed" }, { status: 500 });

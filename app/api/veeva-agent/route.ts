@@ -175,7 +175,7 @@ Respond in this exact JSON format:
       auditNote: result.auditNote,
     };
 
-    return NextResponse.json({ success: true, document: doc, result: auditEntry });
+    logger.audit("veeva-agent", "document_processed", "anonymous", { documentId, action: result.action, risk: result.riskLevel, ip });
     logger.info("veeva-agent", "Document processed", { documentId, action: result.action, risk: result.riskLevel });
     return NextResponse.json({ success: true, document: doc, result: auditEntry });
   } catch (err: unknown) {

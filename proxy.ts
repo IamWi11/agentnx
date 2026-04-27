@@ -1,9 +1,8 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const ALLOWED_ORIGINS = ["https://agentnx.ai", "https://www.agentnx.ai"];
 
-export default clerkMiddleware(async (_auth, req) => {
+export default function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // ── CORS handling for API routes ──────────────────────────────────────────
@@ -31,7 +30,7 @@ export default clerkMiddleware(async (_auth, req) => {
   }
 
   return res;
-});
+}
 
 export const config = {
   matcher: [
