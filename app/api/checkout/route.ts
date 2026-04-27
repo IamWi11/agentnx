@@ -62,7 +62,15 @@ export async function GET(req: NextRequest) {
     const session = await response.json();
 
     if (!response.ok || !session.url) {
-      console.error("Stripe error:", session);
+      // Compact one-line log so Vercel's log UI doesn't truncate the diagnosis
+      const errType = session?.error?.type ?? "unknown";
+      const errCode = session?.error?.code ?? "unknown";
+      const errMsg = (session?.error?.message ?? "no_message").toString().slice(0, 200);
+      const usedPriceId = priceId ? `${priceId.slice(0, 12)}...` : "missing";
+      const keyType = process.env.STRIPE_SECRET_KEY?.startsWith("sk_live_") ? "live" : process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_") ? "test" : "missing";
+      console.error(`[checkout-503] http=${response.status} type=${errType} code=${errCode} key=${keyType} price=${usedPriceId} msg=${errMsg}`);
+      // Original full dump still logged in case it has useful detail
+      console.error("Stripe error full:", JSON.stringify(session));
       return NextResponse.json(
         { error: "Checkout temporarily unavailable. Please contact william.munoz@image101llc.com." },
         { status: 503 }
