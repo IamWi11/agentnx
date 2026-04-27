@@ -710,7 +710,7 @@ export default function VAHelpdeskDemo() {
                 {(classification.priority || classification.category) && (
                   <div className="grid grid-cols-2 gap-3 animate-[fadeInUp_300ms_ease-out]">
                     {classification.priority ? (
-                      <div className={`rounded-2xl p-5 ${priorityColor(classification.priority)} relative overflow-hidden`}>
+                      <div className={`rounded-2xl p-5 ${priorityColor(classification.priority)} relative overflow-hidden transition-all duration-200 hover:scale-[1.02] hover:brightness-125 cursor-default`}>
                         {classification.priority === "P1" && (
                           <span className="absolute top-2 right-2 flex h-2 w-2">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
@@ -725,7 +725,7 @@ export default function VAHelpdeskDemo() {
                       </div>
                     ) : <div />}
                     {classification.category ? (
-                      <div className="rounded-2xl bg-white/[0.04] p-5">
+                      <div className="rounded-2xl bg-white/[0.04] p-5 transition-all duration-200 hover:bg-white/[0.08] hover:scale-[1.02] cursor-default">
                         <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1 flex items-center gap-1.5">
                           <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/></svg>
                           Category
@@ -738,7 +738,7 @@ export default function VAHelpdeskDemo() {
 
                 {/* Routing */}
                 {classification.routeTo && (
-                  <div className="rounded-2xl bg-white/[0.04] p-5 animate-[fadeInUp_300ms_ease-out]">
+                  <div className="rounded-2xl bg-white/[0.04] p-5 animate-[fadeInUp_300ms_ease-out] transition-all duration-200 hover:bg-white/[0.08] hover:scale-[1.01] cursor-default">
                     <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1 flex items-center gap-1.5">
                       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 5a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1V9zm9 1a1 1 0 011-1h3a1 1 0 011 1v5a1 1 0 01-1 1h-3a1 1 0 01-1-1v-5z" clipRule="evenodd"/></svg>
                       Routed To
@@ -775,7 +775,7 @@ export default function VAHelpdeskDemo() {
 
                 {/* Reasoning — streams in word-by-word */}
                 {classification.reasoning && (
-                  <div className="rounded-2xl bg-white/[0.04] p-5 animate-[fadeInUp_300ms_ease-out]">
+                  <div className="rounded-2xl bg-white/[0.04] p-5 animate-[fadeInUp_300ms_ease-out] transition-all duration-200 hover:bg-white/[0.08] hover:scale-[1.01] cursor-default">
                     <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 flex items-center gap-1.5">
                       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/></svg>
                       Agent Reasoning
@@ -789,7 +789,7 @@ export default function VAHelpdeskDemo() {
 
                 {/* Suggested response — streams in word-by-word */}
                 {classification.suggestedResponse && (
-                  <div className="rounded-2xl bg-blue-500/[0.08] p-5 animate-[fadeInUp_300ms_ease-out] shadow-[0_0_50px_-15px_rgba(59,130,246,0.4)]">
+                  <div className="rounded-2xl bg-blue-500/[0.08] p-5 animate-[fadeInUp_300ms_ease-out] shadow-[0_0_50px_-15px_rgba(59,130,246,0.4)] transition-all duration-200 hover:bg-blue-500/[0.14] hover:scale-[1.01] hover:shadow-[0_0_70px_-12px_rgba(59,130,246,0.6)] cursor-default">
                     <div className="text-[10px] font-bold uppercase tracking-wider text-blue-300 mb-2 flex items-center gap-1.5">
                       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
                       Drafted Response to Reporter
