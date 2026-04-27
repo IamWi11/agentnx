@@ -351,7 +351,7 @@ export default function VAHelpdeskDemo() {
         <div className="mb-8 grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             { label: "Triaged today", value: "47", sub: "across 4 facilities" },
-            { label: "Auto-resolved", value: "92%", sub: "no human touch" },
+            { label: "Resolved at Tier-1", value: "92%", sub: "one approval click, no escalation" },
             { label: "Avg time-to-route", value: "8.2s", sub: "voice or text" },
             { label: "Escalated", value: "3", sub: "Tier-2 active" },
           ].map((s) => (
@@ -550,7 +550,7 @@ export default function VAHelpdeskDemo() {
                   <div className="text-base font-semibold text-blue-300">{classification.routeTo}</div>
                   <div className="flex items-center gap-3 mt-2 text-xs">
                     <span className={classification.autoResolvable ? "text-green-400" : "text-orange-400"}>
-                      {classification.autoResolvable ? "✓ Auto-resolvable at Tier 1" : "→ Human escalation required"}
+                      {classification.autoResolvable ? "✓ Resolvable at Tier-1 (one approval click)" : "→ Tier-2 escalation required"}
                     </span>
                     <span className="text-gray-500">Confidence: {classification.confidence}%</span>
                   </div>

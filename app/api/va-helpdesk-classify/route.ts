@@ -14,7 +14,7 @@ You must reply with ONLY a JSON object, no prose, no markdown fences. Schema:
   "routeTo": short string — the team/queue this should land in,
   "reasoning": 2-3 short sentences on why you classified this way — reference the specific cues from the ticket,
   "suggestedResponse": 3-5 sentences drafted as an IT reply back to the reporter — professional, empathetic, specific,
-  "autoResolvable": boolean — true if Tier 1 automation can close it, false if human escalation required,
+  "autoResolvable": boolean — true if Tier-1 can close this with one human approval click on the agent's draft (no Tier-2 escalation needed), false if Tier-2 escalation is required. Every action still requires a human click; this flag is only about whether the resolution stays at Tier-1 or escalates,
   "escalationReason": string if autoResolvable is false else empty string,
   "confidence": integer 0–100
 }
