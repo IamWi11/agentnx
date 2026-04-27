@@ -141,10 +141,17 @@ const TICKETS: Ticket[] = [
 ];
 
 function priorityColor(p: string) {
-  if (p === "P1") return "text-red-400 border-red-500/50 bg-red-500/10";
-  if (p === "P2") return "text-orange-400 border-orange-500/50 bg-orange-500/10";
+  if (p === "P1") return "text-red-400 border-red-500/50 bg-red-500/10 shadow-[0_0_40px_-10px_rgba(239,68,68,0.5)]";
+  if (p === "P2") return "text-orange-400 border-orange-500/50 bg-orange-500/10 shadow-[0_0_40px_-10px_rgba(249,115,22,0.5)]";
   if (p === "P3") return "text-yellow-400 border-yellow-500/50 bg-yellow-500/10";
   return "text-blue-400 border-blue-500/50 bg-blue-500/10";
+}
+
+function priorityBarColor(p: string) {
+  if (p === "P1") return "bg-red-400";
+  if (p === "P2") return "bg-orange-400";
+  if (p === "P3") return "bg-yellow-400";
+  return "bg-blue-400";
 }
 
 export default function VAHelpdeskDemo() {
@@ -348,7 +355,7 @@ export default function VAHelpdeskDemo() {
         </div>
 
         {/* Operations strip */}
-        <div className="mb-8 grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             { label: "Triaged today", value: "47", sub: "across 4 facilities" },
             { label: "Resolved at Tier-1", value: "92%", sub: "one approval click, no escalation" },
@@ -364,6 +371,76 @@ export default function VAHelpdeskDemo() {
               <div className="text-[10px] text-gray-500 mt-0.5">{s.sub}</div>
             </div>
           ))}
+        </div>
+
+        {/* Hourly volume sparkline */}
+        <div className="mb-8 rounded-xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Hourly Volume — last 8 hours</div>
+              <span className="text-[10px] text-gray-600 font-mono">peak 09:00 ET · 11 tickets</span>
+            </div>
+            <div className="flex items-center gap-3 text-[10px] text-gray-500">
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-blue-400/80"></span>Tier-1</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-orange-400/80"></span>Escalated</span>
+            </div>
+          </div>
+          {(() => {
+            const hours = ["04","05","06","07","08","09","10","11"];
+            const tier1 = [1, 2, 3, 5, 8, 11, 7, 6];   // sums to 43
+            const esc =   [0, 0, 0, 0, 1, 1, 0, 1];    // sums to 3
+            const max = 12;
+            const w = 800;
+            const h = 60;
+            const colW = w / hours.length;
+            return (
+              <svg viewBox={`0 0 ${w} ${h + 20}`} className="w-full h-20" preserveAspectRatio="none">
+                {hours.map((hr, i) => {
+                  const t1 = tier1[i];
+                  const e = esc[i];
+                  const totalH = ((t1 + e) / max) * h;
+                  const t1H = (t1 / max) * h;
+                  const eH = (e / max) * h;
+                  const x = i * colW + colW * 0.15;
+                  const colInner = colW * 0.7;
+                  return (
+                    <g key={hr}>
+                      {/* Tier-1 portion (bottom) */}
+                      <rect
+                        x={x}
+                        y={h - t1H}
+                        width={colInner}
+                        height={t1H}
+                        fill="rgb(96 165 250 / 0.8)"
+                        rx="2"
+                      />
+                      {/* Escalated portion (stacked on top) */}
+                      {e > 0 && (
+                        <rect
+                          x={x}
+                          y={h - totalH}
+                          width={colInner}
+                          height={eH}
+                          fill="rgb(251 146 60 / 0.85)"
+                          rx="2"
+                        />
+                      )}
+                      <text
+                        x={x + colInner / 2}
+                        y={h + 14}
+                        textAnchor="middle"
+                        fontSize="9"
+                        fill="rgb(107 114 128)"
+                        fontFamily="ui-monospace, monospace"
+                      >
+                        {hr}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            );
+          })()}
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6">
@@ -531,31 +608,58 @@ export default function VAHelpdeskDemo() {
             )}
 
             {classification && !loading && (
-              <div className="space-y-4">
+              <div className="space-y-4 animate-[fadeInUp_400ms_ease-out]">
                 {/* Priority + Category */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className={`rounded-xl border p-4 ${priorityColor(classification.priority)}`}>
-                    <div className="text-[10px] font-bold uppercase tracking-wider opacity-70 mb-1">Priority</div>
-                    <div className="text-2xl font-extrabold">{classification.priority}</div>
+                  <div className={`rounded-xl border p-4 ${priorityColor(classification.priority)} relative overflow-hidden`}>
+                    {classification.priority === "P1" && (
+                      <span className="absolute top-2 right-2 flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-400" />
+                      </span>
+                    )}
+                    <div className="text-[10px] font-bold uppercase tracking-wider opacity-70 mb-1 flex items-center gap-1.5">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd"/></svg>
+                      Priority
+                    </div>
+                    <div className="text-3xl font-extrabold tabular-nums">{classification.priority}</div>
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Category</div>
-                    <div className="text-sm font-semibold">{classification.category}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1 flex items-center gap-1.5">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/></svg>
+                      Category
+                    </div>
+                    <div className="text-sm font-semibold leading-tight">{classification.category}</div>
                   </div>
                 </div>
 
                 {/* Routing */}
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Routed To</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1 flex items-center gap-1.5">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 5a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1V9zm9 1a1 1 0 011-1h3a1 1 0 011 1v5a1 1 0 01-1 1h-3a1 1 0 01-1-1v-5z" clipRule="evenodd"/></svg>
+                    Routed To
+                  </div>
                   <div className="text-base font-semibold text-blue-300">{classification.routeTo}</div>
-                  <div className="flex items-center gap-3 mt-2 text-xs">
+                  <div className="mt-2 text-xs">
                     <span className={classification.autoResolvable ? "text-green-400" : "text-orange-400"}>
                       {classification.autoResolvable ? "✓ Resolvable at Tier-1 (one approval click)" : "→ Tier-2 escalation required"}
                     </span>
-                    <span className="text-gray-500">Confidence: {classification.confidence}%</span>
+                  </div>
+                  {/* Confidence bar */}
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">
+                      <span>Confidence</span>
+                      <span className="tabular-nums text-gray-300">{classification.confidence}%</span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-white/[0.06] overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${priorityBarColor(classification.priority)} transition-all duration-700`}
+                        style={{ width: `${Math.min(100, Math.max(0, classification.confidence))}%` }}
+                      />
+                    </div>
                   </div>
                   {!classification.autoResolvable && classification.escalationReason && (
-                    <div className="text-xs text-gray-400 mt-2 pt-2 border-t border-white/5">
+                    <div className="text-xs text-gray-400 mt-3 pt-3 border-t border-white/5">
                       <span className="text-gray-500">Escalation reason:</span> {classification.escalationReason}
                     </div>
                   )}
@@ -563,13 +667,19 @@ export default function VAHelpdeskDemo() {
 
                 {/* Reasoning */}
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">Agent Reasoning</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 flex items-center gap-1.5">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/></svg>
+                    Agent Reasoning
+                  </div>
                   <div className="text-sm text-gray-300 leading-relaxed">{classification.reasoning}</div>
                 </div>
 
                 {/* Suggested response */}
                 <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-blue-300 mb-2">Drafted Response to Reporter</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-blue-300 mb-2 flex items-center gap-1.5">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
+                    Drafted Response to Reporter
+                  </div>
                   <div className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">{classification.suggestedResponse}</div>
                   <div className="flex gap-2 mt-3 pt-3 border-t border-white/5">
                     <button className="bg-blue-500 hover:bg-blue-400 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">
