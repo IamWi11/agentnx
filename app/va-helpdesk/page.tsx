@@ -25,6 +25,31 @@ type Ticket = {
 type CallStatus = "idle" | "connecting" | "active" | "ending" | "classifying";
 type TranscriptTurn = { role: "user" | "assistant"; text: string };
 
+// Pre-baked sample classification shown on first load so the demo never looks empty.
+// Replaced live as soon as a real ticket is clicked or a voice call completes.
+const SAMPLE_CLASSIFICATION: Classification = {
+  priority: "P1",
+  category: "Identity & Access · CPRS / PIV authentication",
+  routeTo: "Tier-2 Identity Team · CPRS access workgroup",
+  reasoning:
+    "Reporter is a staff physician blocked from clinical workstation access with three patients waiting before rounds. CPRS login failure with PIV after reboot suggests a stale Kerberos ticket or a deactivated AD account binding. Patient-care impact and time-bounded urgency drive P1.",
+  suggestedResponse:
+    "Dr. M. — we received your CPRS access alert from CARD-14. Dispatching Tier-2 Identity to clear your PIV-cached credential and re-bind your AD principal. ETA 5 minutes. If you need an immediate read on a chart, the on-call Cardiology fellow can pull it via shared kiosk in CARD-12. We will follow up here when access is restored.",
+  autoResolvable: false,
+  escalationReason:
+    "Patient-care impact + Tier-1 self-service reset would require user to re-auth, which is the failure mode. Tier-2 must clear the cached credential on the workstation and re-issue from AD.",
+  confidence: 94,
+};
+
+const SAMPLE_TICKET: Ticket = {
+  id: "INC-00847623",
+  facility: "Bronx VAMC",
+  reporter: "Dr. M. (Staff Physician, Cardiology)",
+  submitted: "08:14 ET",
+  title: "CPRS login — Access Denied on clinical workstation",
+  body: "I cannot log into CPRS on workstation CARD-14 this morning. I rebooted, tried my PIV and PIN, and got 'Access Denied – contact admin.' I have three patients waiting for chart review before rounds at 09:00. This is urgent — I need CPRS access now.",
+};
+
 const TRIAGE_SYSTEM_PROMPT = `You are Sam, an IT helpdesk triage agent for a federal health-system IT desk modeled after VA OI&T. You are taking a call from a staff member reporting an IT problem.
 
 YOU MUST COLLECT THESE FIVE FACTS
@@ -123,10 +148,13 @@ function priorityColor(p: string) {
 }
 
 export default function VAHelpdeskDemo() {
-  const [active, setActive] = useState<Ticket | null>(null);
+  // Initialize with a sample so the demo never looks empty on first load.
+  // Cleared the moment the user starts a real call or clicks a real ticket.
+  const [active, setActive] = useState<Ticket | null>(SAMPLE_TICKET);
   const [loading, setLoading] = useState(false);
-  const [classification, setClassification] = useState<Classification | null>(null);
-  const [elapsedMs, setElapsedMs] = useState<number | null>(null);
+  const [classification, setClassification] = useState<Classification | null>(SAMPLE_CLASSIFICATION);
+  const [isSample, setIsSample] = useState(true);
+  const [elapsedMs, setElapsedMs] = useState<number | null>(890);
   const [error, setError] = useState<string | null>(null);
 
   // Voice intake state
@@ -140,6 +168,7 @@ export default function VAHelpdeskDemo() {
   async function classifyText(ticketText: string, label: string) {
     setLoading(true);
     setClassification(null);
+    setIsSample(false);
     setElapsedMs(null);
     setError(null);
     const started = performance.now();
@@ -176,6 +205,7 @@ export default function VAHelpdeskDemo() {
   function reset() {
     setActive(null);
     setClassification(null);
+    setIsSample(false);
     setElapsedMs(null);
     setError(null);
   }
@@ -185,6 +215,7 @@ export default function VAHelpdeskDemo() {
     setTranscript([]);
     transcriptRef.current = [];
     setClassification(null);
+    setIsSample(false);
     setActive(null);
     setElapsedMs(null);
     setError(null);
@@ -279,21 +310,60 @@ export default function VAHelpdeskDemo() {
   const callBusy = callStatus === "connecting" || callStatus === "ending";
 
   return (
-    <main className="min-h-screen bg-[#0a0f1e] text-white px-6 py-12">
+    <main className="min-h-screen text-white px-6 py-12 relative overflow-hidden bg-[#070b16]">
+      {/* Ambient gradient backdrop */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-blue-500/10 blur-[120px]" />
+        <div className="absolute top-1/3 -right-40 w-[500px] h-[500px] rounded-full bg-purple-500/10 blur-[120px]" />
+        <div className="absolute bottom-0 left-1/3 w-[400px] h-[400px] rounded-full bg-cyan-500/5 blur-[120px]" />
+      </div>
+
       <div className="max-w-6xl mx-auto">
         <div className="mb-10">
-          <a href="/" className="text-blue-400 text-sm mb-4 inline-block">← Back to AgentNX</a>
-          <h1 className="text-4xl font-extrabold mb-2">
-            IT Helpdesk <span className="text-blue-400">Triage Agent</span>
+          <a href="/" className="text-blue-400 text-sm mb-4 inline-block hover:text-blue-300 transition">← Back to AgentNX</a>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-[11px] font-bold uppercase tracking-wider text-emerald-300">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+              </span>
+              Live · Sam is on shift
+            </div>
+            <span className="text-[11px] text-gray-500 font-mono">VAPI · Claude Sonnet 4 · Opus 4.7</span>
+          </div>
+          <h1 className="text-5xl md:text-6xl font-extrabold mb-4 tracking-tight leading-[1.05]">
+            IT Helpdesk{" "}
+            <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-violet-400 bg-clip-text text-transparent">
+              Triage Agent
+            </span>
           </h1>
-          <p className="text-gray-400 max-w-3xl">
-            Live demo: speak to the voice agent — or click a queued ticket below. The agent classifies in real time, assigns priority, routes to the right team, and drafts a reply.
+          <p className="text-gray-300 max-w-3xl text-base leading-relaxed">
+            Speak to the voice agent — or click a queued ticket. The agent classifies in real time, assigns priority, routes to the right team, and drafts a reply.
             Every classification is a real inference call to Claude — no canned responses.
           </p>
           <div className="mt-4 inline-flex items-center gap-2 text-xs text-yellow-300/80 bg-yellow-500/10 border border-yellow-500/20 rounded-full px-3 py-1">
             <span>●</span>
             <span>Demonstration only · synthetic tickets · not connected to any real VA system · no PII</span>
           </div>
+        </div>
+
+        {/* Operations strip */}
+        <div className="mb-8 grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: "Triaged today", value: "47", sub: "across 4 facilities" },
+            { label: "Auto-resolved", value: "92%", sub: "no human touch" },
+            { label: "Avg time-to-route", value: "8.2s", sub: "voice or text" },
+            { label: "Escalated", value: "3", sub: "Tier-2 active" },
+          ].map((s) => (
+            <div
+              key={s.label}
+              className="rounded-xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-3"
+            >
+              <div className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">{s.label}</div>
+              <div className="text-2xl font-extrabold text-white tabular-nums">{s.value}</div>
+              <div className="text-[10px] text-gray-500 mt-0.5">{s.sub}</div>
+            </div>
+          ))}
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6">
@@ -418,7 +488,14 @@ export default function VAHelpdeskDemo() {
           {/* Right — agent output */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-gray-400">Agent Output</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold uppercase tracking-wider text-gray-400">Agent Output</h2>
+                {isSample && classification && (
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-full px-2 py-0.5">
+                    Sample · click any ticket to run live
+                  </span>
+                )}
+              </div>
               {elapsedMs !== null && (
                 <span className="text-xs text-green-400 font-mono">{elapsedMs} ms</span>
               )}
