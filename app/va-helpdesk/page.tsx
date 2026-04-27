@@ -416,11 +416,11 @@ export default function VAHelpdeskDemo() {
         <div className="absolute bottom-0 left-1/3 w-[400px] h-[400px] rounded-full bg-cyan-500/5 blur-[120px]" />
       </div>
 
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-10">
-          <a href="/" className="text-blue-400 text-sm mb-4 inline-block hover:text-blue-300 transition">← Back to AgentNX</a>
-          <div className="flex items-center gap-3 mb-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-[11px] font-bold uppercase tracking-wider text-emerald-300">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-16">
+          <a href="/" className="text-blue-400 text-sm mb-6 inline-block hover:text-blue-300 transition">← Back to AgentNX</a>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-[11px] font-bold uppercase tracking-wider text-emerald-300">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
@@ -429,43 +429,40 @@ export default function VAHelpdeskDemo() {
             </div>
             <span className="text-[11px] text-gray-500 font-mono">VAPI · Claude Sonnet 4 · Opus 4.7</span>
           </div>
-          <h1 className="text-5xl md:text-6xl font-extrabold mb-4 tracking-tight leading-[1.05]">
+          <h1 className="text-6xl md:text-7xl lg:text-8xl font-extrabold mb-6 tracking-tight leading-[0.95]">
             IT Helpdesk{" "}
             <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-violet-400 bg-clip-text text-transparent">
               Triage Agent
             </span>
           </h1>
-          <p className="text-gray-300 max-w-3xl text-base leading-relaxed">
+          <p className="text-gray-300 max-w-2xl text-lg leading-relaxed">
             Speak to the voice agent — or click a queued ticket. The agent classifies in real time, assigns priority, routes to the right team, and drafts a reply.
             Every classification is a real inference call to Claude — no canned responses.
           </p>
-          <div className="mt-4 inline-flex items-center gap-2 text-xs text-yellow-300/80 bg-yellow-500/10 border border-yellow-500/20 rounded-full px-3 py-1">
+          <div className="mt-5 inline-flex items-center gap-2 text-xs text-yellow-300/80 bg-yellow-500/10 rounded-full px-3 py-1">
             <span>●</span>
             <span>Demonstration only · synthetic tickets · not connected to any real VA system · no PII</span>
           </div>
         </div>
 
-        {/* Operations strip */}
-        <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+        {/* Slim status bar — inline data points instead of card grid */}
+        <div className="mb-6 flex flex-wrap items-baseline gap-x-8 gap-y-3 px-1">
           {[
-            { label: "Triaged today", value: "47", sub: "across 4 facilities" },
-            { label: "Resolved at Tier-1", value: "92%", sub: "one approval click, no escalation" },
-            { label: "Avg time-to-route", value: "8.2s", sub: "voice or text" },
-            { label: "Escalated", value: "3", sub: "Tier-2 active" },
-          ].map((s) => (
-            <div
-              key={s.label}
-              className="rounded-xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-3"
-            >
-              <div className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">{s.label}</div>
-              <div className="text-2xl font-extrabold text-white tabular-nums">{s.value}</div>
-              <div className="text-[10px] text-gray-500 mt-0.5">{s.sub}</div>
+            { label: "Triaged today", value: "47" },
+            { label: "Resolved at Tier-1", value: "92%" },
+            { label: "Avg time-to-route", value: "8.2s" },
+            { label: "Escalated", value: "3" },
+          ].map((s, i, arr) => (
+            <div key={s.label} className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-white tabular-nums">{s.value}</span>
+              <span className="text-[11px] uppercase tracking-wider text-gray-500 font-bold">{s.label}</span>
+              {i < arr.length - 1 && <span className="text-gray-700 ml-2 hidden md:inline">·</span>}
             </div>
           ))}
         </div>
 
         {/* Hourly volume sparkline */}
-        <div className="mb-8 rounded-xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-4">
+        <div className="mb-12 rounded-2xl bg-white/[0.025] backdrop-blur-sm p-5">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <div className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Hourly Volume — last 8 hours</div>
@@ -534,11 +531,11 @@ export default function VAHelpdeskDemo() {
           })()}
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Left — voice + ticket queue */}
-          <div className="space-y-6">
-            {/* Voice intake */}
-            <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-500/10 to-blue-500/[0.02] p-5">
+        <div className="grid lg:grid-cols-12 gap-8">
+          {/* Left — voice + ticket queue (5/12 ≈ 42%) */}
+          <div className="lg:col-span-5 space-y-6">
+            {/* Voice intake — borderless, soft glow */}
+            <div className="rounded-2xl bg-gradient-to-br from-blue-500/[0.12] to-blue-500/[0.02] p-6 shadow-[0_0_60px_-15px_rgba(59,130,246,0.4)]">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-bold uppercase tracking-wider text-blue-300">
                   Voice Intake
@@ -629,10 +626,10 @@ export default function VAHelpdeskDemo() {
                     key={t.id}
                     onClick={() => classifyTicket(t)}
                     disabled={loading || callActive || callStatus === "classifying"}
-                    className={`w-full text-left p-4 rounded-xl border transition ${
+                    className={`w-full text-left p-4 rounded-xl transition ${
                       active?.id === t.id
-                        ? "bg-blue-500/10 border-blue-500/60"
-                        : "bg-white/[0.03] border-white/10 hover:border-white/20 hover:bg-white/[0.06]"
+                        ? "bg-blue-500/15 ring-1 ring-blue-500/40"
+                        : "bg-white/[0.03] hover:bg-white/[0.07]"
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     <div className="flex items-center justify-between mb-1">
@@ -653,13 +650,13 @@ export default function VAHelpdeskDemo() {
             </div>
           </div>
 
-          {/* Right — agent output */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
+          {/* Right — agent output (7/12 ≈ 58% — the focal column) */}
+          <div className="lg:col-span-7">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-bold uppercase tracking-wider text-gray-400">Agent Output</h2>
                 {isSample && classification && (
-                  <span className="text-[10px] uppercase tracking-wider font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-full px-2 py-0.5">
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-amber-300 bg-amber-500/10 rounded-full px-2 py-0.5">
                     Sample · click any ticket to run live
                   </span>
                 )}
@@ -713,7 +710,7 @@ export default function VAHelpdeskDemo() {
                 {(classification.priority || classification.category) && (
                   <div className="grid grid-cols-2 gap-3 animate-[fadeInUp_300ms_ease-out]">
                     {classification.priority ? (
-                      <div className={`rounded-xl border p-4 ${priorityColor(classification.priority)} relative overflow-hidden`}>
+                      <div className={`rounded-2xl p-5 ${priorityColor(classification.priority)} relative overflow-hidden`}>
                         {classification.priority === "P1" && (
                           <span className="absolute top-2 right-2 flex h-2 w-2">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
@@ -728,7 +725,7 @@ export default function VAHelpdeskDemo() {
                       </div>
                     ) : <div />}
                     {classification.category ? (
-                      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                      <div className="rounded-2xl bg-white/[0.04] p-5">
                         <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1 flex items-center gap-1.5">
                           <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/></svg>
                           Category
@@ -741,7 +738,7 @@ export default function VAHelpdeskDemo() {
 
                 {/* Routing */}
                 {classification.routeTo && (
-                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 animate-[fadeInUp_300ms_ease-out]">
+                  <div className="rounded-2xl bg-white/[0.04] p-5 animate-[fadeInUp_300ms_ease-out]">
                     <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1 flex items-center gap-1.5">
                       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 5a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1V9zm9 1a1 1 0 011-1h3a1 1 0 011 1v5a1 1 0 01-1 1h-3a1 1 0 01-1-1v-5z" clipRule="evenodd"/></svg>
                       Routed To
@@ -778,7 +775,7 @@ export default function VAHelpdeskDemo() {
 
                 {/* Reasoning — streams in word-by-word */}
                 {classification.reasoning && (
-                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 animate-[fadeInUp_300ms_ease-out]">
+                  <div className="rounded-2xl bg-white/[0.04] p-5 animate-[fadeInUp_300ms_ease-out]">
                     <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 flex items-center gap-1.5">
                       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/></svg>
                       Agent Reasoning
@@ -792,7 +789,7 @@ export default function VAHelpdeskDemo() {
 
                 {/* Suggested response — streams in word-by-word */}
                 {classification.suggestedResponse && (
-                  <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 animate-[fadeInUp_300ms_ease-out]">
+                  <div className="rounded-2xl bg-blue-500/[0.08] p-5 animate-[fadeInUp_300ms_ease-out] shadow-[0_0_50px_-15px_rgba(59,130,246,0.4)]">
                     <div className="text-[10px] font-bold uppercase tracking-wider text-blue-300 mb-2 flex items-center gap-1.5">
                       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
                       Drafted Response to Reporter
