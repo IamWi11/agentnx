@@ -18,8 +18,8 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      // Removed 'unsafe-eval' and *.clerk.accounts.dev — Clerk uninstalled, eval not needed
-      "script-src 'self' 'unsafe-inline' blob: https://va.vercel-scripts.com https://cdn.vercel-insights.com https://challenges.cloudflare.com https://*.daily.co",
+      // 'unsafe-eval' required by Daily.co/VAPI WebRTC call-machine bundle (eval-based loader)
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://va.vercel-scripts.com https://cdn.vercel-insights.com https://challenges.cloudflare.com https://*.daily.co",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: https:",
       "font-src 'self' https://fonts.gstatic.com",
